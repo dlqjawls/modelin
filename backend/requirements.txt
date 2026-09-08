@@ -1,0 +1,16 @@
+fastapi==0.115.*
+uvicorn[standard]==0.34.*
+supabase==2.*
+python-dotenv==1.*
+pykrx==1.*
+yfinance==0.2.*
+ccxt==4.*
+pandas==2.*
+numpy<2.5
+ta>=0.11
+pyportfolioopt>=1.5
+quantstats>=0.0.62
+pydantic==2.*
+httpx==0.28.*
+websockets>=14
+
