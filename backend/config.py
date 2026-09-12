@@ -32,6 +32,9 @@ class Settings:
     ALPACA_API_SECRET: str = os.getenv("ALPACA_API_SECRET", "")
     US_PAPER_BROKER: str = os.getenv("US_PAPER_BROKER", "local")
     NEWS_FEEDS: list[str] = [item for item in os.getenv("NEWS_FEEDS", "").split(",") if item]
+    OPENDART_API_KEY: str = os.getenv("OPENDART_API_KEY", "")
+    SEC_USER_AGENT: str = os.getenv("SEC_USER_AGENT", "")
+    SEC_CIKS: list[str] = [item for item in os.getenv("SEC_CIKS", "").split(",") if item]
 
     # === Server ===
     HOST: str = os.getenv("HOST", "0.0.0.0")

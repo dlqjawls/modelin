@@ -37,6 +37,7 @@ from core.strategy_comparator import compare_strategies
 from adapters.brokers.alpaca import AlpacaBrokerAdapter, AlpacaConfig
 from core.live_gate import LiveTradingGate
 from adapters.market_data.news_feed import RSSNewsContext
+from adapters.market_data.official_sources import OpenDartClient, SecSubmissionsClient
 from tempfile import TemporaryDirectory
 
 
@@ -498,6 +499,10 @@ class QuantCoreTests(unittest.TestCase):
         result = asyncio.run(RSSNewsContext(["http://127.0.0.1:1/unavailable"], 0.1).collect())
         self.assertEqual(result["feed_failures"], 1)
         self.assertEqual(result["risk_off"], 1.0)
+
+    def test_official_sources_fail_closed_without_credentials(self):
+        self.assertEqual(asyncio.run(OpenDartClient("").filings(corp_code="001")), [])
+        self.assertEqual(asyncio.run(SecSubmissionsClient("").filings("320193")), [])
 
     def test_registry_requires_explicit_kis_paper_registration(self):
         registry = BrokerRegistry()

@@ -17,6 +17,8 @@ from config import settings
 from data.providers.krx_provider import KRXProvider
 from data.providers.us_provider import USProvider
 from adapters.market_data.news_feed import RSSNewsContext
+from adapters.market_data.official_sources import OpenDartClient, SecSubmissionsClient
+from core.market_context import NewsEventEngine
 from workers.paper_worker import execute_from_market_data
 from core.strategy_runtime import validate_strategy
 
@@ -64,6 +66,23 @@ async def run(deployment, interval_seconds, once=False):
                 context.update(news_context)
                 strategy["context"] = context
                 deployment = {**deployment, "strategy": strategy}
+            if settings.OPENDART_API_KEY or settings.SEC_CIKS:
+                official_events = []
+                if settings.OPENDART_API_KEY:
+                    dart = OpenDartClient(settings.OPENDART_API_KEY)
+                    for corp_code in deployment.get("corp_codes", []):
+                        official_events.extend(await dart.filings(corp_code=corp_code))
+                if settings.SEC_USER_AGENT:
+                    sec = SecSubmissionsClient(settings.SEC_USER_AGENT)
+                    for cik in settings.SEC_CIKS:
+                        official_events.extend(await sec.filings(cik))
+                if official_events:
+                    context = dict(deployment["strategy"].get("context", {}))
+                    official_news = NewsEventEngine().aggregate(
+                        NewsEventEngine().classify(item.title, item.source, item.published_at)
+                        for item in official_events)
+                    context.update(official_news)
+                    deployment = {**deployment, "strategy": {**deployment["strategy"], "context": context}}
             result = await execute_from_market_data(
                 deployment, data_adapter=data, broker=broker,
                 as_of=datetime.now(timezone.utc),
