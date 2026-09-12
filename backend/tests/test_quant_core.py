@@ -32,10 +32,16 @@ from core.calendar import TradingCalendar
 from core.persistent_paper_broker import PersistentPaperBroker
 from core.regime_router import RegimeDetector, StrategyRouter
 from core.market_context import MacroContext, NewsEventEngine
+from workers.run_paper import load_deployment
 from tempfile import TemporaryDirectory
 
 
 class QuantCoreTests(unittest.TestCase):
+    def test_paper_runner_example_is_a_valid_adaptive_strategy(self):
+        deployment = load_deployment("docs/examples/kis-paper-runner.json")
+        self.assertTrue(deployment["strategy"]["adaptive"])
+        self.assertEqual(deployment["strategy"]["type"], "moving_average")
+
     def test_news_and_macro_context_is_bounded_and_risk_sensitive(self):
         engine = NewsEventEngine()
         news = engine.aggregate([engine.classify("Central bank rate hike amid financial stress", "wire")])

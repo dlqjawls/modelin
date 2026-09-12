@@ -14,6 +14,7 @@ from adapters.market_data.provider_adapter import ProviderMarketDataAdapter
 from config import settings
 from data.providers.krx_provider import KRXProvider
 from workers.paper_worker import execute_from_market_data
+from core.strategy_runtime import validate_strategy
 
 logger = logging.getLogger("modelin.paper-runner")
 
@@ -28,6 +29,7 @@ def load_deployment(path):
         raise ValueError("account_id와 strategy.symbols가 필요합니다.")
     if strategy.get("timeframe", "1d") != "1d":
         raise ValueError("현재 자동 paper runner는 1d 전략만 지원합니다.")
+    validate_strategy(strategy, strategy["symbols"])
     deployment.setdefault("observed_state", "RUNNING")
     return deployment
 

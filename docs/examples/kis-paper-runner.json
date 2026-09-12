@@ -9,8 +9,13 @@
   "strategy": {
     "symbols": ["005930"],
     "timeframe": "1d",
-    "type": "sma_cross",
-    "fast_window": 20,
-    "slow_window": 60
+    "type": "moving_average",
+    "adaptive": true,
+    "short_window": 20,
+    "long_window": 60,
+    "context": {
+      "risk_off": 0.0,
+      "fx_change_20d": 0.0
+    }
   }
 }
