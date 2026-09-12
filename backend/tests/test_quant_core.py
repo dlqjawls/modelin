@@ -30,10 +30,22 @@ from adapters.market_data.provider_adapter import ProviderMarketDataAdapter
 from workers.paper_worker import execute_from_market_data
 from core.calendar import TradingCalendar
 from core.persistent_paper_broker import PersistentPaperBroker
+from core.regime_router import RegimeDetector, StrategyRouter
 from tempfile import TemporaryDirectory
 
 
 class QuantCoreTests(unittest.TestCase):
+    def test_regime_router_blocks_risk_off_and_reduces_high_volatility(self):
+        prices = pd.DataFrame({"A": range(100, 160), "B": range(100, 160)},
+                              index=pd.date_range("2024-01-01", periods=60))
+        detector = RegimeDetector()
+        risk_off = detector.detect(prices, {"risk_off": 1})
+        self.assertEqual(risk_off.name, "RISK_OFF")
+        self.assertFalse(StrategyRouter().route({"type": "momentum"}, risk_off)["enabled"])
+        up = detector.detect(prices)
+        self.assertEqual(up.name, "TREND_UP")
+        self.assertEqual(StrategyRouter().route({"type": "momentum"}, up)["risk_multiplier"], 1.0)
+
     def test_signal_is_executed_on_next_open(self):
         engine = object.__new__(BacktestEngine)
         prices = pd.DataFrame({"A": [100.0, 110.0, 99.0]}, index=pd.date_range("2024-01-01", periods=3))

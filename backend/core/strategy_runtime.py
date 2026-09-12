@@ -6,6 +6,7 @@ import pandas as pd
 
 from core.backtester import BacktestEngine
 from core.backtester import SUPPORTED_STRATEGIES
+from core.regime_router import RegimeDetector, StrategyRouter
 
 
 @dataclass(frozen=True)
@@ -49,10 +50,17 @@ def validate_strategy(strategy: dict, symbols=None) -> dict:
 class StrategyRuntime:
     def __init__(self):
         self._signals = object.__new__(BacktestEngine)
+        self._regimes = RegimeDetector()
+        self._router = StrategyRouter()
 
     def evaluate(self, close_prices: pd.DataFrame, strategy: dict, current_weights=None, cash_buffer=Decimal("0")) -> StrategyDecision:
         configured_symbols = strategy.get("symbols") if isinstance(strategy, dict) else None
         strategy = validate_strategy(strategy, configured_symbols or list(close_prices.columns))
+        if strategy.get("adaptive", False):
+            routed = self._router.route(strategy, self._regimes.detect(close_prices, strategy.get("context")))
+            if not routed.get("enabled", False):
+                return StrategyDecision("BLOCKED", {}, ("REGIME_RISK_OFF",))
+            strategy = routed
         if configured_symbols:
             available = [symbol for symbol in configured_symbols if symbol in close_prices.columns]
             if not available:
