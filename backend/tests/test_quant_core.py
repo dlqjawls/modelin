@@ -37,6 +37,22 @@ from tempfile import TemporaryDirectory
 
 
 class QuantCoreTests(unittest.TestCase):
+    def test_adaptive_risk_off_blocks_before_broker_submission(self):
+        class CountingBroker:
+            def __init__(self): self.submissions = 0
+            async def submit(self, request): self.submissions += 1; return {}
+        broker = CountingBroker()
+        prices = pd.DataFrame({"005930": range(100, 160)},
+                              index=pd.date_range("2024-01-01", periods=60))
+        deployment = {"id": "d", "account_id": "a", "mode": "paper", "observed_state": "RUNNING",
+                      "strategy": {"type": "moving_average", "adaptive": True, "symbols": ["005930"],
+                                   "short_window": 20, "long_window": 60, "context": {"risk_off": 1}},
+                      "cash_buffer": "0.10"}
+        result = asyncio.run(execute_once(deployment, close_prices=prices, prices={"005930": Decimal("159")},
+                                          broker=broker, account_snapshot={"cash": "1000", "positions": []}))
+        self.assertEqual(result["status"], "blocked")
+        self.assertEqual(broker.submissions, 0)
+
     def test_paper_runner_example_is_a_valid_adaptive_strategy(self):
         deployment = load_deployment("docs/examples/kis-paper-runner.json")
         self.assertTrue(deployment["strategy"]["adaptive"])

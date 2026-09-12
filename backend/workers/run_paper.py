@@ -34,7 +34,7 @@ def load_deployment(path):
     return deployment
 
 
-async def run(deployment, interval_seconds):
+async def run(deployment, interval_seconds, once=False):
     broker = KISBrokerAdapter(KISConfig(
         app_key=settings.KIS_APP_KEY,
         app_secret=settings.KIS_APP_SECRET,
@@ -51,6 +51,8 @@ async def run(deployment, interval_seconds):
             logger.info("paper cycle result=%s", result)
         except Exception:
             logger.exception("paper cycle failed; no retry order is submitted")
+        if once:
+            return
         await asyncio.sleep(interval_seconds)
 
 
@@ -58,12 +60,13 @@ def main():
     parser = argparse.ArgumentParser(description="Modelin KRX KIS paper runner")
     parser.add_argument("deployment", help="JSON deployment configuration")
     parser.add_argument("--interval", type=int, default=300, help="cycle interval in seconds")
+    parser.add_argument("--once", action="store_true", help="run one cycle and exit")
     args = parser.parse_args()
     if not settings.KIS_APP_KEY or not settings.KIS_APP_SECRET or not settings.KIS_ACCOUNT_NO:
         raise SystemExit("KIS paper credentials are missing in backend/.env")
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     deployment = load_deployment(args.deployment)
-    asyncio.run(run(deployment, max(60, args.interval)))
+    asyncio.run(run(deployment, max(60, args.interval), once=args.once))
 
 
 if __name__ == "__main__":
