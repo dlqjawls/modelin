@@ -22,7 +22,12 @@ class RegimeDetector:
         context = context or {}
         if close_prices.empty or len(close_prices) < 60:
             return Regime("INSUFFICIENT_DATA", 0.0, 0.0, ("NEED_60_BARS",))
-        market = close_prices.mean(axis=1).dropna()
+        # Absolute prices make a 100,000 KRW asset dominate a 1,000 KRW
+        # asset. Normalize each instrument first so the regime represents the
+        # cross-sectional market move rather than the price scale.
+        normalized = close_prices.astype(float).replace([float("inf"), float("-inf")], pd.NA)
+        normalized = normalized.div(normalized.ffill().iloc[0]).replace([float("inf"), float("-inf")], pd.NA)
+        market = normalized.mean(axis=1, skipna=True).dropna()
         fast = market.rolling(20).mean().iloc[-1]
         slow = market.rolling(60).mean().iloc[-1]
         volatility = market.pct_change().rolling(20).std().iloc[-1]

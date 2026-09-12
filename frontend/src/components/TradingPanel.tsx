@@ -10,6 +10,7 @@ export default function TradingPanel() {
   const [error, setError] = useState<string | null>(null);
   const [workerState, setWorkerState] = useState('unknown');
   const [diagnostics, setDiagnostics] = useState<Record<string, any> | null>(null);
+  const [deployments, setDeployments] = useState<any[]>([]);
 
   const refresh = useCallback(async () => {
     setLoading(true); setError(null);
@@ -19,12 +20,20 @@ export default function TradingPanel() {
       setWorkerState(health.data.paper_worker ?? 'unknown');
       const diagnosticResponse = await operationsApi.diagnostics();
       setDiagnostics(diagnosticResponse.data);
+      const deploymentResponse = await operationsApi.deployments();
+      setDeployments(deploymentResponse.data);
       setAccounts(response.data);
       setSelected((current) => current && response.data.find((item) => item.id === current.id) || response.data[0] || null);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : '운영 상태를 불러오지 못했습니다.');
     } finally { setLoading(false); }
   }, []);
+  const deployment = selected && deployments.find((item) => item.account_id === selected.id);
+  const sendCommand = async (type: 'START' | 'PAUSE' | 'CANCEL_OPEN' | 'LIQUIDATE' | 'RESUME') => {
+    if (!deployment) return;
+    try { await operationsApi.command(deployment.id, type); await refresh(); }
+    catch (cause) { setError(cause instanceof Error ? cause.message : '운영 명령을 처리하지 못했습니다.'); }
+  };
 
   useEffect(() => { void refresh(); }, [refresh]);
   useEffect(() => {
@@ -55,6 +64,12 @@ export default function TradingPanel() {
         <section className="card"><h3>계좌 스냅샷</h3><div className="metric-row"><span>현금</span><strong>{snapshot?.snapshot?.cash ?? '-'}</strong></div>
           <div className="metric-row"><span>보유 종목</span><strong>{snapshot?.snapshot?.positions?.length ?? 0}</strong></div>
           <div className="metric-row"><span>주문 이벤트</span><strong>{snapshot?.snapshot?.events?.length ?? 0}</strong></div>
+          {deployment && <><div className="metric-row"><span>전략 상태</span><strong>{deployment.observed_state}</strong></div>
+            <div className="button-row" style={{ marginTop: 16, gap: 8 }}>
+              {deployment.observed_state === 'RUNNING' ? <button className="btn btn-secondary" onClick={() => void sendCommand('PAUSE')}>일시정지</button> : <button className="btn btn-primary" onClick={() => void sendCommand('RESUME')}>재개</button>}
+              <button className="btn btn-secondary" onClick={() => void sendCommand('CANCEL_OPEN')}>신규 주문 중단</button>
+              <button className="btn btn-danger" onClick={() => void sendCommand('LIQUIDATE')}>전체 청산</button>
+            </div></>}
         </section>
       </div>}
   </div>;

@@ -166,6 +166,7 @@ export interface Deployment {
 
 export const operationsApi = {
   accounts: () => api.get<PaperAccount[]>('/api/v1/accounts'),
+  deployments: () => api.get<Deployment[]>('/api/v1/deployments'),
   createPaperAccount: (body: { name: string; market: string; currency: string; initial_cash: string }) =>
     api.post<PaperAccount>('/api/v1/accounts/paper', body),
   snapshot: (accountId: string) => api.get(`/api/v1/accounts/${accountId}/snapshot`),
