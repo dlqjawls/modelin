@@ -440,6 +440,17 @@ class QuantCoreTests(unittest.TestCase):
         self.assertEqual(first["events"][0]["status"], "filled")
         self.assertEqual(second["events"], [])
 
+    def test_kis_websocket_subscription_is_paper_safe(self):
+        def handler(request):
+            return httpx.Response(200, json={"approval_key": "approval", "rt_cd": "0"})
+        async def scenario():
+            async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+                adapter = KISBrokerAdapter(KISConfig("key", "secret", "12345678"), client)
+                return await adapter.websocket_subscription(["005930"])
+        subscription = asyncio.run(scenario())
+        self.assertIn("31000", subscription["url"])
+        self.assertEqual(subscription["subscriptions"][0]["tr_id"], "H0STCNI0")
+
     def test_registry_requires_explicit_kis_paper_registration(self):
         registry = BrokerRegistry()
         class Marker:

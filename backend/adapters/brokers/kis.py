@@ -27,6 +27,10 @@ class KISConfig:
     def base_url(self):
         return "https://openapivts.koreainvestment.com:29443" if self.environment == "paper" else "https://openapi.koreainvestment.com:9443"
 
+    @property
+    def websocket_url(self):
+        return "ws://ops.koreainvestment.com:31000" if self.environment == "paper" else "ws://ops.koreainvestment.com:21000"
+
     def __post_init__(self):
         if self.environment not in {"paper", "live"}:
             raise ValueError("KIS environment는 paper 또는 live여야 합니다.")
@@ -72,6 +76,27 @@ class KISBrokerAdapter:
             "appkey": self.config.app_key, "appsecret": self.config.app_secret,
         }, json=body)
         return payload["HASH"]
+
+    async def websocket_subscription(self, symbols: list[str]) -> dict:
+        """Return an authenticated subscription payload for execution notices.
+
+        The websocket consumer owns reconnects and feeds the same journal as
+        REST polling; this method only prepares connection credentials.
+        """
+        if not symbols or any(not symbol.isdigit() for symbol in symbols):
+            raise ValueError("KIS 국내주식 웹소켓 종목코드가 필요합니다.")
+        approval = await self._request("POST", "/oauth2/Approval", json={
+            "grant_type": "client_credentials", "appkey": self.config.app_key,
+            "secretkey": self.config.app_secret,
+        })
+        approval_key = approval.get("approval_key")
+        if not approval_key:
+            raise RuntimeError("KIS websocket approval key가 없습니다.")
+        return {
+            "url": self.config.websocket_url,
+            "approval_key": approval_key,
+            "subscriptions": [{"tr_id": "H0STCNI0", "tr_key": symbol} for symbol in symbols],
+        }
 
     async def capabilities(self):
         return BrokerCapabilities("krx", "kis", self.config.environment == "paper", False,
