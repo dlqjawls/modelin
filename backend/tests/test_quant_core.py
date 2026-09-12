@@ -48,6 +48,16 @@ class QuantCoreTests(unittest.TestCase):
         self.assertGreaterEqual(scores[0].score, scores[1].score)
         self.assertTrue(all(item.total_trades >= 0 for item in scores))
 
+    def test_provider_adapter_exposes_open_frame_for_strategy_selection(self):
+        end = datetime(2024, 1, 1, tzinfo=timezone.utc)
+        snapshot = DataSnapshot("s", datetime(2024, 1, 2, tzinfo=timezone.utc), (
+            Bar("A", "1d", datetime(2023, 12, 31, tzinfo=timezone.utc), end,
+                Decimal("10"), Decimal("11"), Decimal("9"), Decimal("10.5"), Decimal("100"),
+                datetime(2024, 1, 2, tzinfo=timezone.utc), True, "x"),
+        ))
+        adapter = ProviderMarketDataAdapter(object(), "test")
+        self.assertEqual(adapter.open_frame(snapshot).loc[datetime(2024, 1, 1, tzinfo=timezone.utc), "A"], 10.0)
+
     def test_adaptive_risk_off_blocks_before_broker_submission(self):
         class CountingBroker:
             def __init__(self): self.submissions = 0

@@ -18,6 +18,7 @@ from core.calendar import TradingCalendar
 from core.scheduler import PaperScheduler
 from core.execution_journal import ExecutionJournal
 from core.risk_guard import RiskGuard
+from core.strategy_comparator import compare_strategies
 
 logger = logging.getLogger("modelin.paper_worker")
 calendar = TradingCalendar()
@@ -132,6 +133,18 @@ async def execute_from_market_data(deployment: dict, *, data_adapter, broker, as
     if not usable:
         return {"status": "blocked", "reason": "NO_FINAL_MARKET_DATA", "orders": []}
     close_prices = data_adapter.close_frame(snapshot)
+    if deployment.get("strategy", {}).get("auto_select"):
+        candidates = deployment["strategy"].get("candidates", [])
+        if not candidates:
+            return {"status": "blocked", "reason": "NO_STRATEGY_CANDIDATES", "orders": []}
+        rankings = compare_strategies(data_adapter.open_frame(snapshot), close_prices,
+                                      symbols=symbols, market=deployment.get("market", "krx"),
+                                      strategies=candidates)
+        selected = dict(rankings[0].strategy)
+        selected["symbols"] = symbols
+        selected["context"] = deployment["strategy"].get("context", {})
+        selected["adaptive"] = deployment["strategy"].get("adaptive", False)
+        deployment = {**deployment, "strategy": selected}
     latest = {}
     for bar in usable:
         if bar.end == max(item.end for item in usable):

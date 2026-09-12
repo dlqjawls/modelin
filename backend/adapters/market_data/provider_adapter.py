@@ -39,3 +39,11 @@ class ProviderMarketDataAdapter:
         if not rows:
             return pd.DataFrame()
         return pd.DataFrame(rows).pivot(index="date", columns="symbol", values="close").sort_index()
+
+    @staticmethod
+    def open_frame(snapshot: DataSnapshot) -> pd.DataFrame:
+        rows = [{"symbol": bar.instrument_id, "date": bar.end, "open": float(bar.open)}
+                for bar in snapshot.usable_bars()]
+        if not rows:
+            return pd.DataFrame()
+        return pd.DataFrame(rows).pivot(index="date", columns="symbol", values="open").sort_index()
