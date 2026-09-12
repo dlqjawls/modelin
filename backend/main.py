@@ -5,6 +5,7 @@ FastAPI 기반 백엔드 서버 진입점.
 """
 from contextlib import asynccontextmanager
 import asyncio
+from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -24,7 +25,10 @@ async def lifespan(app: FastAPI):
     """앱 생명주기 관리"""
     worker_task = None
     if settings.PAPER_WORKER_ENABLED and settings.PAPER_DEPLOYMENT_FILE:
-        deployment = load_deployment(settings.PAPER_DEPLOYMENT_FILE)
+        deployment_path = Path(settings.PAPER_DEPLOYMENT_FILE)
+        if not deployment_path.exists():
+            deployment_path = Path(__file__).resolve().parent.parent / settings.PAPER_DEPLOYMENT_FILE
+        deployment = load_deployment(str(deployment_path))
         worker_task = asyncio.create_task(run_paper_worker(
             deployment, max(60, settings.PAPER_WORKER_INTERVAL_SECONDS)))
         app.state.paper_worker = "running"
@@ -82,7 +86,7 @@ async def root():
 @app.get("/api/health")
 async def health_check():
     """헬스 체크"""
-    return {"status": "healthy"}
+    return {"status": "healthy", "paper_worker": getattr(app.state, "paper_worker", "unknown")}
 
 
 if __name__ == "__main__":
