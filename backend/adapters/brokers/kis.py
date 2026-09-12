@@ -142,7 +142,33 @@ class KISBrokerAdapter:
         return "acknowledged"
 
     async def order_events(self, *, cursor=None):
-        raise NotImplementedError("KIS WebSocket 체결 통보 consumer 연결 단계입니다.")
+        """Poll today's order/contract records as a restart-safe event page.
+
+        WebSocket execution notices can be added later; REST polling remains
+        the reconciliation source of truth when a process reconnects.
+        """
+        token = await self._token()
+        today = date.today().strftime("%Y%m%d")
+        tr_id = "VTTC8001R" if self.config.environment == "paper" else "TTTC8001R"
+        payload = await self._request("GET", "/uapi/domestic-stock/v1/trading/inquire-daily-ccld",
+            headers=self._headers(token, tr_id), params={
+                "CANO": self.config.account_no, "ACNT_PRDT_CD": self.config.product_code,
+                "INQR_STRT_DT": today, "INQR_END_DT": today, "SLL_BUY_DVSN_CD": "00",
+                "INQR_DVSN": "00", "PDNO": "", "CCLD_DVSN": "00", "ORD_GNO_BRNO": "",
+                "ODNO": "", "INQR_DVSN_3": "00", "INQR_DVSN_1": "",
+                "CTX_AREA_FK100": "", "CTX_AREA_NK100": ""})
+        events = []
+        for row in payload.get("output1", []):
+            order_id = str(row.get("odno", ""))
+            event_id = f"{order_id}:{row.get('tot_ccld_qty', '0')}:{row.get('ord_tmd', '')}"
+            if cursor and event_id <= cursor:
+                continue
+            events.append({"event_id": event_id, "broker_order_id": order_id,
+                           "status": self._status_from_row(row),
+                           "filled_quantity": row.get("tot_ccld_qty", "0"),
+                           "average_price": row.get("avg_prvs", "0"), "raw": row})
+        events.sort(key=lambda item: item["event_id"])
+        return {"events": events, "next_cursor": events[-1]["event_id"] if events else cursor}
 
     async def cancel(self, broker_order_id: str):
         if not broker_order_id:

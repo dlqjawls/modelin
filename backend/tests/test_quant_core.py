@@ -423,6 +423,23 @@ class QuantCoreTests(unittest.TestCase):
         self.assertEqual(calls[-1].headers["tr_id"], "VTTC0802U")
         self.assertEqual(calls[-1].headers["hashkey"], "hash")
 
+    def test_kis_order_events_polls_daily_orders_with_cursor(self):
+        def handler(request):
+            if request.url.path == "/oauth2/tokenP":
+                return httpx.Response(200, json={"access_token": "token", "rt_cd": "0"})
+            return httpx.Response(200, json={"rt_cd": "0", "output1": [{
+                "odno": "123", "tot_ccld_qty": "1", "ord_qty": "1", "ord_tmd": "101010", "avg_prvs": "70000"
+            }]})
+        async def scenario():
+            async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+                adapter = KISBrokerAdapter(KISConfig("key", "secret", "12345678"), client)
+                first = await adapter.order_events()
+                second = await adapter.order_events(cursor=first["next_cursor"])
+                return first, second
+        first, second = asyncio.run(scenario())
+        self.assertEqual(first["events"][0]["status"], "filled")
+        self.assertEqual(second["events"], [])
+
     def test_registry_requires_explicit_kis_paper_registration(self):
         registry = BrokerRegistry()
         class Marker:
