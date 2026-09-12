@@ -37,6 +37,8 @@ live 어댑터는 기본 등록하지 않는다. paper/live 모드를 계좌 생
 - KIS 체결 웹소켓 운영 consumer(REST 재대사 polling은 구현됨)
 - 장기간 paper 운용 후 실거래 전환 검토
 
+GitHub Actions CI가 master push와 pull request마다 백엔드 테스트·컴파일과 프론트엔드 production build를 수행한다.
+
 ## 적응형 전략 방향
 
 `backend/core/regime_router.py`는 가격 추세·변동성에 환율 충격과 외부 위험 점수를 결합해 `TREND_UP`, `TREND_UP_HIGH_VOL`, `TREND_DOWN`, `RISK_OFF`를 판정한다. 전략에 `adaptive: true`를 지정하면 라우터가 국면에 따라 모멘텀 전략을 활성화하거나 주문을 차단한다. 뉴스 모델은 향후 `context.risk_off`와 같은 검증된 수치 입력으로만 연결하며, 뉴스 원문이 주문을 직접 만들 수 없도록 한다.
