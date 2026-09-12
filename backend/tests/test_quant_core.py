@@ -31,10 +31,19 @@ from workers.paper_worker import execute_from_market_data
 from core.calendar import TradingCalendar
 from core.persistent_paper_broker import PersistentPaperBroker
 from core.regime_router import RegimeDetector, StrategyRouter
+from core.market_context import MacroContext, NewsEventEngine
 from tempfile import TemporaryDirectory
 
 
 class QuantCoreTests(unittest.TestCase):
+    def test_news_and_macro_context_is_bounded_and_risk_sensitive(self):
+        engine = NewsEventEngine()
+        news = engine.aggregate([engine.classify("Central bank rate hike amid financial stress", "wire")])
+        context = MacroContext.build(fx_change_20d=0.12, rate_change_20d=0.5, news=news)
+        self.assertEqual(news["news_count"], 1)
+        self.assertGreaterEqual(context["risk_off"], 0.7)
+        self.assertLessEqual(context["risk_off"], 1.0)
+
     def test_regime_router_blocks_risk_off_and_reduces_high_volatility(self):
         prices = pd.DataFrame({"A": range(100, 160), "B": range(100, 160)},
                               index=pd.date_range("2024-01-01", periods=60))
