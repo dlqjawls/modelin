@@ -36,6 +36,7 @@ from workers.run_paper import load_deployment
 from core.strategy_comparator import compare_strategies
 from adapters.brokers.alpaca import AlpacaBrokerAdapter, AlpacaConfig
 from core.live_gate import LiveTradingGate
+from adapters.market_data.news_feed import RSSNewsContext
 from tempfile import TemporaryDirectory
 
 
@@ -492,6 +493,11 @@ class QuantCoreTests(unittest.TestCase):
             capabilities=live_capabilities, order_notional=Decimal("10"))
         self.assertTrue(allowed)
         self.assertEqual(reason, "AUTHORIZED")
+
+    def test_news_feed_failure_enters_degraded_risk_mode(self):
+        result = asyncio.run(RSSNewsContext(["http://127.0.0.1:1/unavailable"], 0.1).collect())
+        self.assertEqual(result["feed_failures"], 1)
+        self.assertEqual(result["risk_off"], 1.0)
 
     def test_registry_requires_explicit_kis_paper_registration(self):
         registry = BrokerRegistry()
