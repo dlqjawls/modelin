@@ -158,6 +158,21 @@ async def execute_from_market_data(deployment: dict, *, data_adapter, broker, as
             latest[bar.instrument_id] = bar.close
     account = await broker.account_snapshot()
     schedule_key = max(item.end for item in usable).isoformat()
+    if deployment.get("observed_state") == "LIQUIDATING":
+        liquidation_orders = []
+        for position in account.get("positions", []):
+            symbol = position.get("symbol")
+            quantity = Decimal(str(position.get("quantity", "0")))
+            price = latest.get(symbol)
+            if not symbol or quantity <= 0 or price is None or price <= 0:
+                continue
+            request = OrderRequest(
+                account_id=deployment["account_id"],
+                client_order_id=f"liquidate-{deployment['id']}-{schedule_key}-{symbol}",
+                symbol=symbol, side="sell", quantity=quantity, limit_price=price,
+            )
+            liquidation_orders.append(await broker.submit(request))
+        return {"status": "liquidated", "orders": liquidation_orders}
     return await execute_once(deployment, close_prices=close_prices,
                                prices=latest, broker=broker, account_snapshot=account,
                                journal=journal, schedule_key=schedule_key)

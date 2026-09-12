@@ -18,6 +18,7 @@ from api.portfolio import router as portfolio_router
 from api.trading import router as trading_router
 from api.v1 import router as operations_router
 from workers.run_paper import load_deployment, run as run_paper_worker
+from core.operations_store import OperationsStore
 
 
 @asynccontextmanager
@@ -29,8 +30,23 @@ async def lifespan(app: FastAPI):
         if not deployment_path.exists():
             deployment_path = Path(__file__).resolve().parent.parent / settings.PAPER_DEPLOYMENT_FILE
         deployment = load_deployment(str(deployment_path))
+        operations = OperationsStore(settings.PAPER_DB_PATH)
+
+        async def current_deployment():
+            stored = operations.deployment(deployment["id"])
+            if not stored:
+                return deployment
+            account = operations.account(stored["account_id"]) or {}
+            return {
+                **deployment,
+                **stored,
+                "market": account.get("market", deployment.get("market")),
+                "initial_cash": account.get("initial_cash", deployment.get("initial_cash", "10000000")),
+            }
+
         worker_task = asyncio.create_task(run_paper_worker(
-            deployment, max(60, settings.PAPER_WORKER_INTERVAL_SECONDS)))
+            deployment, max(60, settings.PAPER_WORKER_INTERVAL_SECONDS),
+            deployment_loader=current_deployment))
         app.state.paper_worker = "running"
         print(f"[Modelin] paper worker started: {deployment['id']}")
     else:

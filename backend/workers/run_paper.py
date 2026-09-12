@@ -43,7 +43,7 @@ def load_deployment(path):
     return deployment
 
 
-async def run(deployment, interval_seconds, once=False):
+async def run(deployment, interval_seconds, once=False, deployment_loader=None):
     if deployment["market"] == "krx":
         broker = KISBrokerAdapter(KISConfig(
             app_key=settings.KIS_APP_KEY, app_secret=settings.KIS_APP_SECRET,
@@ -66,6 +66,14 @@ async def run(deployment, interval_seconds, once=False):
         logger.warning("unresolved execution intents remain pending: %s", recovery["unknown"])
     while True:
         try:
+            if deployment_loader is not None:
+                deployment = await deployment_loader()
+            if deployment.get("observed_state") in {"PAUSED", "ARCHIVED", "CANCELING"}:
+                logger.info("paper cycle skipped: state=%s", deployment.get("observed_state"))
+                if once:
+                    return
+                await asyncio.sleep(interval_seconds)
+                continue
             if settings.NEWS_FEEDS:
                 news_context = await RSSNewsContext(settings.NEWS_FEEDS).collect()
                 strategy = dict(deployment.get("strategy", {}))
