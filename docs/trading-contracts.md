@@ -70,7 +70,7 @@ v1 deployment는 단일 거래 통화로 운용한다. 멀티통화 계좌는 �
 
 ## 4. 테이블 관계와 무결성
 
-기존 schema.sql 테이블은 보존하고 v2_ 접두 신규 테이블로 전환한다. 아래는 논리 모델이며 아직 실행 가능한 migration SQL은 아니다.
+기존 schema.sql 테이블은 보존하고 v2_ 접두 신규 테이블로 전환한다. 실행 가능한 PostgreSQL migration은 `backend/migrations/001_trading_foundation.sql`에 있으며, 로컬 검증은 SQLite repository를 사용한다.
 
 | 테이블 | 핵심 관계·제약 |
 | --- | --- |
@@ -224,7 +224,7 @@ START/RESUME는 데이터 준비·대사·지원 기능·미확정 주문 검사
 
 ## 9. 설정 파일 의미
 
-[paper-deployment.json](examples/paper-deployment.json)은 아직 loader가 없는 계약 예시다. 실제 instrument/account UUID는 seed 및 계좌 생성 이후 바인딩한다. 임의 시장 ticker를 UUID처럼 사용하지 않는다.
+[paper-deployment.json](examples/paper-deployment.json)은 계약 fixture다. 실제 실행 예시는 [kis-paper-runner.json](examples/kis-paper-runner.json)과 [us-paper-runner.json](examples/us-paper-runner.json)이며, account ID와 broker 자격증명은 실행 환경에서 바인딩한다.
 
 - strategy와 deployment는 구분해서 저장한다. strategy는 계산 규칙, deployment는 계좌·예산·스케줄·모드다.
 - cash_buffer는 미배정 현금 목표이며 target_weights 합은 1-cash_buffer 이하.
