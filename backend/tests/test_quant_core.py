@@ -111,6 +111,15 @@ class QuantCoreTests(unittest.TestCase):
         self.assertEqual(up.name, "TREND_UP")
         self.assertEqual(StrategyRouter().route({"type": "momentum"}, up)["risk_multiplier"], 1.0)
 
+    def test_regime_detector_is_not_biased_by_price_scale_or_initial_missing_bars(self):
+        index = pd.date_range("2024-01-01", periods=60)
+        prices = pd.DataFrame({
+            "low_price": [None] + [100 + i for i in range(59)],
+            "high_price": [100000 + i * 1000 for i in range(60)],
+        }, index=index)
+        regime = RegimeDetector().detect(prices)
+        self.assertEqual(regime.name, "TREND_UP")
+
     def test_signal_is_executed_on_next_open(self):
         engine = object.__new__(BacktestEngine)
         prices = pd.DataFrame({"A": [100.0, 110.0, 99.0]}, index=pd.date_range("2024-01-01", periods=3))

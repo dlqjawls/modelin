@@ -26,7 +26,8 @@ class RegimeDetector:
         # asset. Normalize each instrument first so the regime represents the
         # cross-sectional market move rather than the price scale.
         normalized = close_prices.astype(float).replace([float("inf"), float("-inf")], pd.NA)
-        normalized = normalized.div(normalized.ffill().iloc[0]).replace([float("inf"), float("-inf")], pd.NA)
+        base = normalized.apply(lambda column: column.dropna().iloc[0] if not column.dropna().empty else pd.NA)
+        normalized = normalized.div(base).replace([float("inf"), float("-inf")], pd.NA)
         market = normalized.mean(axis=1, skipna=True).dropna()
         fast = market.rolling(20).mean().iloc[-1]
         slow = market.rolling(60).mean().iloc[-1]
