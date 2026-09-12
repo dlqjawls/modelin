@@ -47,4 +47,6 @@ GitHub Actions CI가 master push와 pull request마다 백엔드 테스트·컴�
 
 `backend/core/market_context.py`에는 뉴스 제목을 이벤트 유형과 영향도·신뢰도로 변환하는 기본 엔진과 환율·금리·뉴스를 제한된 수치 컨텍스트로 합치는 계층을 추가했다. 실제 뉴스 공급자는 이 경계 뒤에 연결하며, 공급자 장애나 낮은 신뢰도에서는 위험을 낮추는 방향으로만 동작한다.
 
+`backend/adapters/market_data/news_feed.py`는 설정된 RSS 피드를 실행 주기마다 읽고, 모든 피드가 실패하면 해당 컨텍스트를 `risk_off=1.0`으로 만들어 주문을 보수적으로 차단한다.
+
 `backend/core/strategy_comparator.py`는 같은 가격 표본과 거래비용을 여러 전략에 동시에 적용하고, 수익률만이 아니라 CAGR·샤프·최대낙폭을 반영해 순위를 만든다. 최고 순위 결과를 자동으로 실거래에 투입하지 않고 paper 후보로만 사용한다.

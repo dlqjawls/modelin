@@ -16,6 +16,7 @@ from adapters.market_data.provider_adapter import ProviderMarketDataAdapter
 from config import settings
 from data.providers.krx_provider import KRXProvider
 from data.providers.us_provider import USProvider
+from adapters.market_data.news_feed import RSSNewsContext
 from workers.paper_worker import execute_from_market_data
 from core.strategy_runtime import validate_strategy
 
@@ -56,6 +57,13 @@ async def run(deployment, interval_seconds, once=False):
         data = ProviderMarketDataAdapter(USProvider(), "us")
     while True:
         try:
+            if settings.NEWS_FEEDS:
+                news_context = await RSSNewsContext(settings.NEWS_FEEDS).collect()
+                strategy = dict(deployment.get("strategy", {}))
+                context = dict(strategy.get("context", {}))
+                context.update(news_context)
+                strategy["context"] = context
+                deployment = {**deployment, "strategy": strategy}
             result = await execute_from_market_data(
                 deployment, data_adapter=data, broker=broker,
                 as_of=datetime.now(timezone.utc),
