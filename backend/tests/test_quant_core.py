@@ -84,6 +84,10 @@ class QuantCoreTests(unittest.TestCase):
         deployment = load_deployment("docs/examples/us-paper-runner.json")
         self.assertEqual(deployment["market"], "us")
 
+    def test_alpaca_deployment_selects_external_paper_broker(self):
+        deployment = load_deployment("docs/examples/us-paper-runner.json")
+        self.assertEqual(deployment.get("broker"), "local")
+
     def test_news_and_macro_context_is_bounded_and_risk_sensitive(self):
         engine = NewsEventEngine()
         news = engine.aggregate([engine.classify("Central bank rate hike amid financial stress", "wire")])

@@ -3,6 +3,7 @@
   "account_id": "us-paper-account",
   "mode": "paper",
   "market": "us",
+  "broker": "local",
   "initial_cash": "10000000",
   "observed_state": "RUNNING",
   "cash_buffer": "0.10",

@@ -16,6 +16,7 @@ class AlpacaConfig:
     api_key: str
     api_secret: str
     environment: str = "paper"
+    account_id: str = ""
     timeout_seconds: float = 10.0
 
     @property
@@ -61,7 +62,7 @@ class AlpacaBrokerAdapter:
         return {"cash": account.get("cash", "0"), "positions": positions, "source": "alpaca-paper"}
 
     async def submit(self, request: OrderRequest):
-        if request.account_id != self.config.api_key:
+        if self.config.account_id and request.account_id != self.config.account_id:
             raise ValueError("Alpaca account 식별자가 일치하지 않습니다.")
         body = {"symbol": request.symbol, "qty": str(request.quantity), "side": request.side,
                 "type": "limit" if request.limit_price is not None else "market",

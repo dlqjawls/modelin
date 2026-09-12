@@ -30,6 +30,7 @@ class Settings:
     KIS_ENVIRONMENT: str = os.getenv("KIS_ENVIRONMENT", "paper")
     ALPACA_API_KEY: str = os.getenv("ALPACA_API_KEY", "")
     ALPACA_API_SECRET: str = os.getenv("ALPACA_API_SECRET", "")
+    US_PAPER_BROKER: str = os.getenv("US_PAPER_BROKER", "local")
 
     # === Server ===
     HOST: str = os.getenv("HOST", "0.0.0.0")
