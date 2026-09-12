@@ -21,6 +21,8 @@ from adapters.market_data.official_sources import OpenDartClient, SecSubmissions
 from core.market_context import NewsEventEngine
 from workers.paper_worker import execute_from_market_data
 from core.strategy_runtime import validate_strategy
+from core.execution_journal import ExecutionJournal
+from workers.paper_worker import recover_pending_submissions
 
 logger = logging.getLogger("modelin.paper-runner")
 
@@ -33,6 +35,7 @@ def load_deployment(path):
     strategy = deployment.get("strategy") or {}
     if not deployment.get("account_id") or not strategy.get("symbols"):
         raise ValueError("account_id와 strategy.symbols가 필요합니다.")
+    deployment.setdefault("id", f"{deployment['account_id']}-{deployment['market']}-paper")
     if strategy.get("timeframe", "1d") != "1d":
         raise ValueError("현재 자동 paper runner는 1d 전략만 지원합니다.")
     validate_strategy(strategy, strategy["symbols"])
@@ -57,6 +60,10 @@ async def run(deployment, interval_seconds, once=False):
             broker = PaperBrokerAdapter(deployment["account_id"], settings.PAPER_DB_PATH, "us",
                                         initial_cash=deployment.get("initial_cash", "10000000"))
         data = ProviderMarketDataAdapter(USProvider(), "us")
+    journal = ExecutionJournal(settings.PAPER_DB_PATH)
+    recovery = await recover_pending_submissions(journal, broker)
+    if recovery["unknown"]:
+        logger.warning("unresolved execution intents remain pending: %s", recovery["unknown"])
     while True:
         try:
             if settings.NEWS_FEEDS:
@@ -85,7 +92,7 @@ async def run(deployment, interval_seconds, once=False):
                     deployment = {**deployment, "strategy": {**deployment["strategy"], "context": context}}
             result = await execute_from_market_data(
                 deployment, data_adapter=data, broker=broker,
-                as_of=datetime.now(timezone.utc),
+                as_of=datetime.now(timezone.utc), journal=journal,
             )
             logger.info("paper cycle result=%s", result)
         except Exception:

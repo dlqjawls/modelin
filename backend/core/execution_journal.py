@@ -67,6 +67,16 @@ class ExecutionJournal:
             finally:
                 db.close()
 
+    def has_run(self, deployment_id, schedule_key):
+        db = self._db()
+        try:
+            return db.execute(
+                "select 1 from execution_runs where deployment_id=? and schedule_key=?",
+                (deployment_id, schedule_key),
+            ).fetchone() is not None
+        finally:
+            db.close()
+
     def mark_submitted(self, client_order_id, result):
         with self._lock:
             db = self._db()

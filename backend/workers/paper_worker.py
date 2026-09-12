@@ -5,6 +5,7 @@ account; live execution is intentionally unavailable until a reviewed adapter
 is registered.
 """
 import asyncio
+import hashlib
 import logging
 from datetime import datetime, timezone
 from decimal import Decimal
@@ -102,16 +103,22 @@ async def execute_once(deployment: dict, *, close_prices: pd.DataFrame, prices: 
                            positions=positions, prices=prices)
     if journal is not None:
         schedule_key = schedule_key or close_prices.index[-1].isoformat()
+        existing_run = journal.has_run(deployment["id"], schedule_key)
+        run_token = hashlib.sha256(schedule_key.encode("utf-8")).hexdigest()[:12]
+        client_ids = {intent.symbol: f"paper-{deployment['id']}-{run_token}-{intent.symbol}-{intent.side}" for intent in intents}
         _, journal_rows = journal.commit_plan(deployment_id=deployment["id"], schedule_key=schedule_key,
                                               decision={"kind": decision.kind, "reason_codes": decision.reason_codes,
                                                         "target_weights": decision.target_weights}, intents=[
-                                                  type("JournalIntent", (), {"client_order_id": f"paper-{deployment['id']}-{intent.symbol}-{intent.side}",
+                                                  type("JournalIntent", (), {"client_order_id": client_ids[intent.symbol],
                                                                               "symbol": intent.symbol, "side": intent.side,
                                                                               "quantity": intent.quantity, "reference_price": intent.reference_price})()
                                                   for intent in intents])
+        if existing_run:
+            return {"status": "already_journaled", "reason_codes": decision.reason_codes, "orders": journal_rows}
     submitted = []
     for intent in intents:
-        request = OrderRequest(account_id=deployment["account_id"], client_order_id=f"paper-{deployment['id']}-{intent.symbol}-{intent.side}",
+        client_order_id = client_ids[intent.symbol] if journal is not None else f"paper-{deployment['id']}-{intent.symbol}-{intent.side}"
+        request = OrderRequest(account_id=deployment["account_id"], client_order_id=client_order_id,
                                symbol=intent.symbol, side=intent.side, quantity=intent.quantity,
                                limit_price=intent.reference_price)
         result = await broker.submit(request)
@@ -121,7 +128,7 @@ async def execute_once(deployment: dict, *, close_prices: pd.DataFrame, prices: 
     return {"status": "executed", "reason_codes": decision.reason_codes, "orders": submitted}
 
 
-async def execute_from_market_data(deployment: dict, *, data_adapter, broker, as_of):
+async def execute_from_market_data(deployment: dict, *, data_adapter, broker, as_of, journal=None):
     """Fetch a normalized snapshot and execute one safe paper cycle."""
     if deployment.get("mode") != "paper":
         raise RuntimeError("live deployment은 아직 지원되지 않습니다.")
@@ -150,8 +157,10 @@ async def execute_from_market_data(deployment: dict, *, data_adapter, broker, as
         if bar.end == max(item.end for item in usable):
             latest[bar.instrument_id] = bar.close
     account = await broker.account_snapshot()
+    schedule_key = max(item.end for item in usable).isoformat()
     return await execute_once(deployment, close_prices=close_prices,
-                               prices=latest, broker=broker, account_snapshot=account)
+                               prices=latest, broker=broker, account_snapshot=account,
+                               journal=journal, schedule_key=schedule_key)
 
 
 async def serve(deployment_loader, interval_seconds: int = 60, execute=None, scheduler=None):

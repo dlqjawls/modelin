@@ -79,6 +79,10 @@ class StrategyRuntime:
         if cash_buffer < 0 or cash_buffer >= 1:
             raise ValueError("cash_buffer는 0 이상 1 미만이어야 합니다.")
         target = {symbol: value * (Decimal("1") - cash_buffer) for symbol, value in target.items()}
+        risk_multiplier = Decimal(str(strategy.get("risk_multiplier", "1")))
+        if risk_multiplier < 0 or risk_multiplier > 1:
+            raise ValueError("risk_multiplier는 0 이상 1 이하여야 합니다.")
+        target = {symbol: value * risk_multiplier for symbol, value in target.items()}
         if current_weights is not None:
             symbols = set(target) | set(current_weights)
             unchanged = all(abs(Decimal(str(current_weights.get(symbol, 0))) - target.get(symbol, Decimal("0"))) <= Decimal("0.00000001") for symbol in symbols)
