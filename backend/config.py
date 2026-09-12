@@ -28,9 +28,6 @@ class Settings:
     KIS_APP_SECRET: str = os.getenv("KIS_APP_SECRET", "")
     KIS_ACCOUNT_NO: str = os.getenv("KIS_ACCOUNT_NO", "")
     KIS_ENVIRONMENT: str = os.getenv("KIS_ENVIRONMENT", "paper")
-    ALPACA_API_KEY: str = os.getenv("ALPACA_API_KEY", "")
-    ALPACA_API_SECRET: str = os.getenv("ALPACA_API_SECRET", "")
-    US_PAPER_BROKER: str = os.getenv("US_PAPER_BROKER", "local")
     NEWS_FEEDS: list[str] = [item for item in os.getenv("NEWS_FEEDS", "").split(",") if item]
     OPENDART_API_KEY: str = os.getenv("OPENDART_API_KEY", "")
     SEC_USER_AGENT: str = os.getenv("SEC_USER_AGENT", "")

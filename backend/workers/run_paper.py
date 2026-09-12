@@ -10,8 +10,6 @@ import logging
 from datetime import datetime, timezone
 
 from adapters.brokers.kis import KISBrokerAdapter, KISConfig
-from adapters.brokers.paper import PaperBrokerAdapter
-from adapters.brokers.alpaca import AlpacaBrokerAdapter, AlpacaConfig
 from adapters.market_data.provider_adapter import ProviderMarketDataAdapter
 from config import settings
 from data.providers.krx_provider import KRXProvider
@@ -50,15 +48,7 @@ async def run(deployment, interval_seconds, once=False, deployment_loader=None):
             account_no=settings.KIS_ACCOUNT_NO, environment="paper"))
         data = ProviderMarketDataAdapter(KRXProvider(), "krx")
     else:
-        if deployment.get("broker", settings.US_PAPER_BROKER) == "alpaca":
-            if not settings.ALPACA_API_KEY or not settings.ALPACA_API_SECRET:
-                raise RuntimeError("Alpaca paper 자격증명이 없어 US worker를 시작할 수 없습니다.")
-            broker = AlpacaBrokerAdapter(AlpacaConfig(
-                settings.ALPACA_API_KEY, settings.ALPACA_API_SECRET,
-                account_id=deployment["account_id"]))
-        else:
-            broker = PaperBrokerAdapter(deployment["account_id"], settings.PAPER_DB_PATH, "us",
-                                        initial_cash=deployment.get("initial_cash", "10000000"))
+        raise RuntimeError("KIS 해외주식 주문 어댑터가 아직 구현되지 않아 US worker를 시작할 수 없습니다.")
         data = ProviderMarketDataAdapter(USProvider(), "us")
     journal = ExecutionJournal(settings.PAPER_DB_PATH)
     recovery = await recover_pending_submissions(journal, broker)
@@ -119,8 +109,6 @@ def main():
     deployment = load_deployment(args.deployment)
     if deployment["market"] == "krx" and (not settings.KIS_APP_KEY or not settings.KIS_APP_SECRET or not settings.KIS_ACCOUNT_NO):
         raise SystemExit("KIS paper credentials are missing in backend/.env")
-    if deployment["market"] == "us" and deployment.get("broker", settings.US_PAPER_BROKER) == "alpaca" and (not settings.ALPACA_API_KEY or not settings.ALPACA_API_SECRET):
-        raise SystemExit("Alpaca paper credentials are missing in backend/.env")
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     asyncio.run(run(deployment, max(60, args.interval), once=args.once))
 

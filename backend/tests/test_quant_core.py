@@ -34,7 +34,6 @@ from core.regime_router import RegimeDetector, StrategyRouter
 from core.market_context import MacroContext, NewsEventEngine
 from workers.run_paper import load_deployment
 from core.strategy_comparator import compare_strategies
-from adapters.brokers.alpaca import AlpacaBrokerAdapter, AlpacaConfig
 from core.live_gate import LiveTradingGate
 from adapters.market_data.news_feed import RSSNewsContext
 from adapters.market_data.official_sources import OpenDartClient, SecSubmissionsClient
@@ -88,7 +87,7 @@ class QuantCoreTests(unittest.TestCase):
         deployment = load_deployment("docs/examples/us-paper-runner.json")
         self.assertEqual(deployment["market"], "us")
 
-    def test_alpaca_deployment_selects_external_paper_broker(self):
+    def test_us_deployment_is_validated_but_not_executed_without_kis_overseas_adapter(self):
         deployment = load_deployment("docs/examples/us-paper-runner.json")
         self.assertEqual(deployment.get("broker"), "local")
 
@@ -472,23 +471,6 @@ class QuantCoreTests(unittest.TestCase):
         subscription = asyncio.run(scenario())
         self.assertIn("31000", subscription["url"])
         self.assertEqual(subscription["subscriptions"][0]["tr_id"], "H0STCNI0")
-
-    def test_alpaca_paper_order_mapping_never_enables_live(self):
-        calls = []
-        def handler(request):
-            calls.append(request)
-            if request.url.path == "/v2/orders" and request.method == "POST":
-                return httpx.Response(200, json={"id": "alpaca-1", "status": "accepted"})
-            return httpx.Response(200, json=[])
-        async def scenario():
-            async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
-                adapter = AlpacaBrokerAdapter(AlpacaConfig("key", "secret"), client)
-                capabilities = await adapter.capabilities()
-                result = await adapter.submit(OrderRequest("key", "client-1", "AAPL", "buy", Decimal("1"), Decimal("100")))
-                return capabilities, result
-        capabilities, result = asyncio.run(scenario())
-        self.assertFalse(capabilities.supports_live)
-        self.assertEqual(result["broker_order_id"], "alpaca-1")
 
     def test_live_gate_fails_closed_until_every_condition_is_explicit(self):
         paper_capabilities = type("Capabilities", (), {"supports_live": False})()

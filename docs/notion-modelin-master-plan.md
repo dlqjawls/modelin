@@ -28,7 +28,7 @@
 | 스크리닝 | PER·PBR·ROE 등 조건 필터 | 국장 일부 종목, 미장 고정 목록, 코인 재무조건 미지원 |
 | 백테스트 | 이동평균·RSI·모멘텀·볼린저·동일가중 | 시간 정렬, 홀드 의미, 수수료, 리밸런싱 계산 수정 필요 |
 | 포트폴리오 | paper 계좌 snapshot·주문·이벤트 API | KRX·US paper 검증 진행 |
-| 자동매매 | 전략·리스크·원장·브로커 worker | KIS·Alpaca paper 연결, live 차단 |
+| 자동매매 | 전략·리스크·원장·브로커 worker | KIS 국내 paper 연결, 해외주식 어댑터 구현 필요, live 차단 |
 | 주문·원장 | positions/trades 기본 스키마 | 미체결·부분체결·예약금·복구 표현 부족 |
 | 지속 실행 | FastAPI lifecycle worker·시장 캘린더·재시작 대사 | 운영 paper 검증 필요 |
 | 운영 화면 | 차트·스크리너·백테스트 | 포트폴리오·자동매매는 Coming Soon |

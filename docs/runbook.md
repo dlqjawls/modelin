@@ -10,15 +10,9 @@
 
 서버가 시작되면 `GET http://127.0.0.1:8000/api/health`에서 `paper_worker`가 `running`인지 확인한다.
 
-## 미국주식 local paper
+## 미국주식
 
-Alpaca 자격증명 없이 로컬 SQLite paper 계좌로 실행할 수 있다.
-
-```powershell
-.scripts\start-paper.ps1 -Market us -IntervalSeconds 300
-```
-
-Alpaca paper를 사용할 때는 `backend/.env`에 `ALPACA_API_KEY`, `ALPACA_API_SECRET`을 넣고 US deployment의 `broker`를 `alpaca`로 설정한다.
+KIS 해외주식 주문 어댑터 구현 전까지 미국주식 worker는 안전을 위해 시작을 차단한다.
 
 ## 중지와 안전 규칙
 
