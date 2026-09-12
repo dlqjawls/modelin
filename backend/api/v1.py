@@ -118,11 +118,6 @@ async def create_deployment(request: DeploymentRequest, idempotency_key: str | N
                                            key=idempotency_key, payload=request.model_dump())
     except ValueError as exc:
         raise HTTPException(409, str(exc)) from exc
-
-
-@router.get("/deployments")
-async def list_deployments():
-    return _store.deployments()
     if prior:
         return prior["response"]
     account = _store.account(request.account_id)
@@ -146,6 +141,11 @@ async def list_deployments():
         return result
     except ValueError as exc:
         raise HTTPException(409, str(exc)) from exc
+
+
+@router.get("/deployments")
+async def list_deployments():
+    return _store.deployments()
 
 
 @router.get("/deployments/{deployment_id}")

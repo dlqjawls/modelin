@@ -38,6 +38,7 @@ from adapters.brokers.alpaca import AlpacaBrokerAdapter, AlpacaConfig
 from core.live_gate import LiveTradingGate
 from adapters.market_data.news_feed import RSSNewsContext
 from adapters.market_data.official_sources import OpenDartClient, SecSubmissionsClient
+from api.v1 import create_deployment, create_paper_account
 from tempfile import TemporaryDirectory
 
 
@@ -503,6 +504,18 @@ class QuantCoreTests(unittest.TestCase):
     def test_official_sources_fail_closed_without_credentials(self):
         self.assertEqual(asyncio.run(OpenDartClient("").filings(corp_code="001")), [])
         self.assertEqual(asyncio.run(SecSubmissionsClient("").filings("320193")), [])
+
+    def test_deployment_creation_executes_validation_and_persists(self):
+        async def scenario():
+            account = await create_paper_account(type("Request", (), {
+                "model_dump": lambda self: {"name": "test", "market": "krx", "currency": "KRW", "initial_cash": "1000"},
+                "name": "test", "market": "krx", "currency": "KRW", "initial_cash": "1000"})(), idempotency_key=None)
+            request = type("Request", (), {
+                "model_dump": lambda self: {"account_id": account["id"], "strategy": {"type": "momentum", "symbols": ["005930"]}, "allocation_amount": "100", "cash_buffer": "0.1", "mode": "paper"},
+                "account_id": account["id"], "strategy": {"type": "momentum", "symbols": ["005930"]}, "allocation_amount": "100", "cash_buffer": "0.1", "mode": "paper"})()
+            return await create_deployment(request, idempotency_key=None)
+        deployment = asyncio.run(scenario())
+        self.assertEqual(deployment["observed_state"], "DRAFT")
 
     def test_registry_requires_explicit_kis_paper_registration(self):
         registry = BrokerRegistry()
