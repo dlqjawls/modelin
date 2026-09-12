@@ -10,7 +10,7 @@
   "cash_buffer": "0.10",
   "max_asset_weight": "0.25",
   "strategy": {
-    "symbols": ["AAPL", "MSFT", "NVDA"],
+    "symbols": ["AAPL", "MSFT", "NVDA", "SPCX"],
     "timeframe": "1d",
     "type": "moving_average",
     "adaptive": true,

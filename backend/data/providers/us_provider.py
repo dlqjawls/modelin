@@ -22,6 +22,7 @@ from data.cache import cache
 # 실제 운영 시 Supabase에 종목 마스터 테이블 관리
 _POPULAR_US_TICKERS = [
     ("AAPL", "Apple Inc."), ("MSFT", "Microsoft Corp."),
+    ("SPCX", "Space Exploration Technologies Corp."),
     ("GOOGL", "Alphabet Inc."), ("AMZN", "Amazon.com Inc."),
     ("NVDA", "NVIDIA Corp."), ("META", "Meta Platforms Inc."),
     ("TSLA", "Tesla Inc."), ("BRK-B", "Berkshire Hathaway"),
