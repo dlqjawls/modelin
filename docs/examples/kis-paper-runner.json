@@ -1,0 +1,16 @@
+{
+  "id": "local-kis-paper",
+  "account_id": "KIS_ACCOUNT_NO_FROM_ENV",
+  "mode": "paper",
+  "market": "krx",
+  "observed_state": "RUNNING",
+  "cash_buffer": "0.10",
+  "max_asset_weight": "0.25",
+  "strategy": {
+    "symbols": ["005930"],
+    "timeframe": "1d",
+    "type": "sma_cross",
+    "fast_window": 20,
+    "slow_window": 60
+  }
+}
