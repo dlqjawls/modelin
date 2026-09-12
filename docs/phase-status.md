@@ -49,4 +49,6 @@ GitHub Actions CI가 master push와 pull request마다 백엔드 테스트·컴�
 
 `backend/adapters/market_data/news_feed.py`는 설정된 RSS 피드를 실행 주기마다 읽고, 모든 피드가 실패하면 해당 컨텍스트를 `risk_off=1.0`으로 만들어 주문을 보수적으로 차단한다.
 
+공식 이벤트 출처는 `backend/adapters/market_data/official_sources.py`에서 OpenDART와 SEC EDGAR를 별도 수집한다. DART는 `OPENDART_API_KEY`와 deployment의 `corp_codes`, SEC는 `SEC_USER_AGENT`와 `SEC_CIKS`가 설정된 경우에만 실행되며, 수집 이벤트에는 출처·접수일·원문 URL·공시 식별자를 보존한다.
+
 `backend/core/strategy_comparator.py`는 같은 가격 표본과 거래비용을 여러 전략에 동시에 적용하고, 수익률만이 아니라 CAGR·샤프·최대낙폭을 반영해 순위를 만든다. 최고 순위 결과를 자동으로 실거래에 투입하지 않고 paper 후보로만 사용한다.
