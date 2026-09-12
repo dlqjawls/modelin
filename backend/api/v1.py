@@ -77,6 +77,23 @@ async def capabilities(account_id: str):
     return {"account_id": account_id, "mode": account["mode"], "capabilities": (await broker.capabilities()).__dict__}
 
 
+@router.get("/diagnostics")
+async def diagnostics():
+    """Safe readiness diagnostics; secret values are never returned."""
+    return {
+        "paper_worker": "configured" if settings.PAPER_WORKER_ENABLED and settings.PAPER_DEPLOYMENT_FILE else "disabled",
+        "sources": {
+            "kis_paper": "configured" if all((settings.KIS_APP_KEY, settings.KIS_APP_SECRET, settings.KIS_ACCOUNT_NO)) else "missing_credentials",
+            "alpaca_paper": "configured" if all((settings.ALPACA_API_KEY, settings.ALPACA_API_SECRET)) else "missing_credentials",
+            "rss": "configured" if settings.NEWS_FEEDS else "not_configured",
+            "opendart": "configured" if settings.OPENDART_API_KEY else "missing_api_key",
+            "sec_edgar": "configured" if settings.SEC_USER_AGENT and settings.SEC_CIKS else "missing_user_agent_or_cik",
+        },
+        "live_trading": "disabled_by_default",
+        "crypto_trading": "paused",
+    }
+
+
 @router.get("/accounts/{account_id}/snapshot")
 async def account_snapshot(account_id: str):
     account = _store.account(account_id)

@@ -9,6 +9,7 @@ export default function TradingPanel() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [workerState, setWorkerState] = useState('unknown');
+  const [diagnostics, setDiagnostics] = useState<Record<string, any> | null>(null);
 
   const refresh = useCallback(async () => {
     setLoading(true); setError(null);
@@ -16,6 +17,8 @@ export default function TradingPanel() {
       const response = await operationsApi.accounts();
       const health = await healthCheck();
       setWorkerState(health.data.paper_worker ?? 'unknown');
+      const diagnosticResponse = await operationsApi.diagnostics();
+      setDiagnostics(diagnosticResponse.data);
       setAccounts(response.data);
       setSelected((current) => current && response.data.find((item) => item.id === current.id) || response.data[0] || null);
     } catch (cause) {
@@ -36,6 +39,13 @@ export default function TradingPanel() {
       <span className={`badge ${workerState === 'running' ? 'badge-success' : 'badge-info'}`}>WORKER · {workerState.toUpperCase()}</span>
       <button className="btn btn-secondary" onClick={() => void refresh()}><RefreshCw size={16} /> 새로고침</button></div>
     {error && <div className="alert alert-error">{error}</div>}
+    {diagnostics && <section className="card" style={{ marginBottom: 16 }}><h3>연결 진단</h3>
+      {Object.entries(diagnostics.sources || {}).map(([name, state]) => <div className="metric-row" key={name}>
+        <span>{name}</span><strong>{String(state)}</strong>
+      </div>)}
+      <div className="metric-row"><span>코인 매매</span><strong>{diagnostics.crypto_trading}</strong></div>
+      <div className="metric-row"><span>실거래</span><strong>{diagnostics.live_trading}</strong></div>
+    </section>}
     {loading ? <div className="empty-state">계좌 상태를 불러오는 중...</div> : !accounts.length ?
       <div className="empty-state"><Activity size={42} /><h3>Paper 계좌가 없습니다</h3><p>백엔드 API에서 Paper 계좌를 생성하면 여기에 표시됩니다.</p></div> :
       <div className="dashboard-grid">
