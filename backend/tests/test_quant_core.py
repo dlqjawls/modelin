@@ -79,6 +79,10 @@ class QuantCoreTests(unittest.TestCase):
         self.assertTrue(deployment["strategy"]["adaptive"])
         self.assertEqual(deployment["strategy"]["type"], "moving_average")
 
+    def test_us_paper_runner_configuration_is_accepted_without_kis_credentials(self):
+        deployment = load_deployment("docs/examples/us-paper-runner.json")
+        self.assertEqual(deployment["market"], "us")
+
     def test_news_and_macro_context_is_bounded_and_risk_sensitive(self):
         engine = NewsEventEngine()
         news = engine.aggregate([engine.classify("Central bank rate hike amid financial stress", "wire")])

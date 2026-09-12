@@ -6,9 +6,9 @@ from ports.broker import BrokerCapabilities, OrderRequest
 
 
 class PaperBrokerAdapter:
-    def __init__(self, account_id: str, path: str, market: str, venue: str = "paper"):
+    def __init__(self, account_id: str, path: str, market: str, venue: str = "paper", initial_cash: Decimal = Decimal("10000000")):
         self.account_id, self.market, self.venue = account_id, market, venue
-        self._broker = PersistentPaperBroker(path)
+        self._broker = PersistentPaperBroker(path, initial_cash=initial_cash)
 
     async def capabilities(self):
         return BrokerCapabilities(self.market, self.venue, True, False, ("market", "limit"), True)

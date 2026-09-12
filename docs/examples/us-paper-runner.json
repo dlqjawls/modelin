@@ -1,0 +1,24 @@
+{
+  "id": "local-us-paper",
+  "account_id": "us-paper-account",
+  "mode": "paper",
+  "market": "us",
+  "initial_cash": "10000000",
+  "observed_state": "RUNNING",
+  "cash_buffer": "0.10",
+  "max_asset_weight": "0.25",
+  "strategy": {
+    "symbols": ["AAPL", "MSFT", "NVDA"],
+    "timeframe": "1d",
+    "type": "moving_average",
+    "adaptive": true,
+    "short_window": 20,
+    "long_window": 60,
+    "context": {"risk_off": 0.0, "fx_change_20d": 0.0},
+    "candidates": [
+      {"type": "momentum", "lookback": 20},
+      {"type": "moving_average", "short_window": 20, "long_window": 60},
+      {"type": "rsi", "period": 14}
+    ]
+  }
+}
