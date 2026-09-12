@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Activity, RefreshCw } from 'lucide-react';
-import { operationsApi, type PaperAccount } from '../services/api';
+import { healthCheck, operationsApi, type PaperAccount } from '../services/api';
 
 export default function TradingPanel() {
   const [accounts, setAccounts] = useState<PaperAccount[]>([]);
@@ -8,11 +8,14 @@ export default function TradingPanel() {
   const [snapshot, setSnapshot] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [workerState, setWorkerState] = useState('unknown');
 
   const refresh = useCallback(async () => {
     setLoading(true); setError(null);
     try {
       const response = await operationsApi.accounts();
+      const health = await healthCheck();
+      setWorkerState(health.data.paper_worker ?? 'unknown');
       setAccounts(response.data);
       setSelected((current) => current && response.data.find((item) => item.id === current.id) || response.data[0] || null);
     } catch (cause) {
@@ -30,6 +33,7 @@ export default function TradingPanel() {
 
   return <div className="page-content">
     <div className="page-header"><div><h2>자동매매 운영</h2><p>현재는 안전한 Paper 모드만 지원합니다.</p></div>
+      <span className={`badge ${workerState === 'running' ? 'badge-success' : 'badge-info'}`}>WORKER · {workerState.toUpperCase()}</span>
       <button className="btn btn-secondary" onClick={() => void refresh()}><RefreshCw size={16} /> 새로고침</button></div>
     {error && <div className="alert alert-error">{error}</div>}
     {loading ? <div className="empty-state">계좌 상태를 불러오는 중...</div> : !accounts.length ?
