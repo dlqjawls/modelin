@@ -2,9 +2,10 @@
 Modelin - 퀀트 투자 플랫폼 설정
 """
 import os
+from pathlib import Path
 from dotenv import load_dotenv
 
-load_dotenv()
+load_dotenv(Path(__file__).with_name(".env"))
 
 
 class Settings:
@@ -23,17 +24,22 @@ class Settings:
     # === API Keys (Trading) ===
     UPBIT_ACCESS_KEY: str = os.getenv("UPBIT_ACCESS_KEY", "")
     UPBIT_SECRET_KEY: str = os.getenv("UPBIT_SECRET_KEY", "")
+    KIS_APP_KEY: str = os.getenv("KIS_APP_KEY", "")
+    KIS_APP_SECRET: str = os.getenv("KIS_APP_SECRET", "")
+    KIS_ACCOUNT_NO: str = os.getenv("KIS_ACCOUNT_NO", "")
+    KIS_ENVIRONMENT: str = os.getenv("KIS_ENVIRONMENT", "paper")
 
     # === Server ===
     HOST: str = os.getenv("HOST", "0.0.0.0")
     PORT: int = int(os.getenv("PORT", "8000"))
     CORS_ORIGINS: list[str] = os.getenv(
-        "CORS_ORIGINS", "http://localhost:5173,http://localhost:3000"
+        "CORS_ORIGINS", "http://localhost:5173,http://localhost:5174,http://localhost:5175,http://localhost:3000"
     ).split(",")
 
     # === Data ===
     CACHE_TTL_SECONDS: int = int(os.getenv("CACHE_TTL_SECONDS", "300"))  # 5분
     MAX_OHLCV_DAYS: int = int(os.getenv("MAX_OHLCV_DAYS", "3650"))  # 10년
+    PAPER_DB_PATH: str = os.getenv("PAPER_DB_PATH", "modelin-paper.sqlite3")
 
 
 settings = Settings()

@@ -14,6 +14,7 @@ from api.screener import router as screener_router
 from api.backtest import router as backtest_router
 from api.portfolio import router as portfolio_router
 from api.trading import router as trading_router
+from api.v1 import router as operations_router
 
 
 @asynccontextmanager
@@ -49,6 +50,7 @@ app.include_router(screener_router)
 app.include_router(backtest_router)
 app.include_router(portfolio_router)
 app.include_router(trading_router)
+app.include_router(operations_router)
 
 
 @app.get("/")

@@ -1,0 +1,63 @@
+{
+  "schema_version": 1,
+  "purpose": "contract_fixture_not_live_configuration",
+  "account": {
+    "id": "11111111-1111-4111-8111-111111111111",
+    "mode": "paper",
+    "market": "krx",
+    "currency": "KRW",
+    "initial_cash": "10000000"
+  },
+  "strategy": {
+    "id": "22222222-2222-4222-8222-222222222222",
+    "version": 1,
+    "type": "moving_average",
+    "timeframe": "1d",
+    "parameters": {
+      "short_window": 20,
+      "long_window": 60
+    },
+    "universe": {
+      "type": "fixed_list",
+      "instrument_ids": [
+        "44444444-4444-4444-8444-444444444444",
+        "55555555-5555-4555-8555-555555555555"
+      ]
+    },
+    "weighting": "equal_weight_with_caps",
+    "warmup_observations": 60
+  },
+  "deployment": {
+    "mode": "paper",
+    "initial_state": "DRAFT",
+    "allocation_amount": "10000000",
+    "allocation_currency": "KRW",
+    "schedule": {
+      "calendar_ref": "fixture-krx-calendar-v1",
+      "decision_trigger": "session_close_data_ready",
+      "rebalance": "last_session_of_month",
+      "execution_policy": "on_signal_change_or_schedule",
+      "catch_up": "latest_only"
+    },
+    "risk": {
+      "cash_buffer": "0.10",
+      "max_asset_weight": "0.45",
+      "max_order_notional": "4500000",
+      "max_daily_turnover": "1.00",
+      "daily_loss_limit": "0.03",
+      "max_drawdown": "0.15",
+      "risk_day_timezone": "Asia/Seoul",
+      "missing_data_action": "BLOCK_NEW_EXPOSURE",
+      "loss_limit_action": "CANCEL_OPEN"
+    },
+    "execution": {
+      "broker_adapter": "paper",
+      "fill_model": "next_eligible_open",
+      "cost_model_ref": "fixture-cost-v1",
+      "quote_max_age_seconds": 30,
+      "account_snapshot_max_age_seconds": 30,
+      "intent_validity": "next_eligible_session",
+      "on_expiry": "REPLAN"
+    }
+  }
+}

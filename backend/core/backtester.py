@@ -1,36 +1,32 @@
-"""
-Modelin - Vectorized 백테스팅 엔진
-
-벡터화 연산을 사용한 고속 백테스팅 엔진.
-"""
+"""Event-aware long-only backtesting engine used by paper and research flows."""
 from dataclasses import dataclass, field
-from datetime import datetime
 
 import numpy as np
 import pandas as pd
 
-from data.providers.krx_provider import KRXProvider
-from data.providers.us_provider import USProvider
-from data.providers.crypto_provider import CryptoProvider
+ANNUALIZATION = {"krx": 252, "us": 252, "crypto": 365}
+SUPPORTED_STRATEGIES = {"equal_weight", "momentum", "moving_average", "rsi", "bollinger_bands"}
 
 
 @dataclass
 class BacktestConfig:
-    """백테스팅 설정"""
     symbols: list[str]
     market: str = "krx"
     start_date: str = ""
     end_date: str = ""
     strategy: dict = field(default_factory=dict)
     initial_capital: float = 10_000_000
-    commission_rate: float = 0.00015   # 0.015% (한국 주식 기준)
-    slippage_rate: float = 0.001       # 0.1%
-    rebalance_period: str = "1M"       # 리밸런싱 주기
+    commission_rate: float = 0.00015
+    slippage_rate: float = 0.001
+    transaction_tax_rate: float = 0.0
+    rebalance_period: str = "1M"
+    execution: str = "next_open"
+    benchmark_symbol: str | None = None
+    quantity_step: float = 1.0
 
 
 @dataclass
 class BacktestResult:
-    """백테스팅 결과"""
     total_return: float = 0.0
     cagr: float = 0.0
     sharpe_ratio: float = 0.0
@@ -45,236 +41,156 @@ class BacktestResult:
 
 
 class BacktestEngine:
-    """Vectorized 백테스팅 엔진"""
-
     def __init__(self):
-        self._providers = {
-            "krx": KRXProvider(),
-            "us": USProvider(),
-            "crypto": CryptoProvider(),
-        }
+        from data.providers.crypto_provider import CryptoProvider
+        from data.providers.krx_provider import KRXProvider
+        from data.providers.us_provider import USProvider
+        self._providers = {"krx": KRXProvider(), "us": USProvider(), "crypto": CryptoProvider()}
 
     async def run(self, config: BacktestConfig) -> BacktestResult:
-        """
-        백테스팅 실행.
-
-        Args:
-            config: 백테스팅 설정
-
-        Returns:
-            BacktestResult: 백테스팅 결과
-        """
-        provider = self._providers.get(config.market)
-        if not provider:
-            raise ValueError(f"지원하지 않는 시장: {config.market}")
-
-        # 1. 가격 데이터 수집
-        price_data = {}
-        for symbol in config.symbols:
-            df = await provider.get_ohlcv(
-                symbol, config.start_date, config.end_date, "1d"
-            )
-            if not df.empty:
-                price_data[symbol] = df
-
-        if not price_data:
+        self._validate_config(config)
+        provider = self._providers[config.market]
+        frames = {}
+        for symbol in dict.fromkeys(config.symbols):
+            frame = await provider.get_ohlcv(symbol, config.start_date, config.end_date, "1d")
+            if not frame.empty and {"open", "close"}.issubset(frame.columns):
+                frame = frame[["open", "high", "low", "close", "volume"]].copy()
+                frame.index = pd.to_datetime(frame.index, utc=True).tz_convert(None)
+                frames[symbol] = frame.sort_index()
+        if not frames:
             raise ValueError("사용 가능한 가격 데이터가 없습니다.")
+        opens = pd.DataFrame({s: f["open"] for s, f in frames.items()}).sort_index()
+        closes = pd.DataFrame({s: f["close"] for s, f in frames.items()}).sort_index()
+        return self._event_backtest(opens, closes, self._generate_signals(closes, config.strategy), config)
 
-        # 2. 종가 기준 통합 DataFrame
-        close_prices = pd.DataFrame({
-            symbol: df["close"] for symbol, df in price_data.items()
-        })
-        close_prices = close_prices.dropna()
+    @staticmethod
+    def _validate_config(config):
+        if config.market not in ANNUALIZATION:
+            raise ValueError(f"지원하지 않는 시장: {config.market}")
+        if not config.symbols or config.initial_capital <= 0:
+            raise ValueError("종목과 초기자금은 양수여야 합니다.")
+        if config.execution != "next_open":
+            raise ValueError("현재 체결 방식은 next_open만 지원합니다.")
+        from core.strategy_runtime import validate_strategy
+        validate_strategy(config.strategy, config.symbols)
+        if min(config.commission_rate, config.slippage_rate, config.transaction_tax_rate) < 0:
+            raise ValueError("거래비용은 음수일 수 없습니다.")
+        if config.quantity_step <= 0:
+            raise ValueError("quantity_step은 양수여야 합니다.")
 
-        if close_prices.empty:
-            raise ValueError("공통 기간의 데이터가 없습니다.")
-
-        # 3. 전략에 따른 시그널 생성
-        strategy_type = config.strategy.get("type", "equal_weight")
-        signals = self._generate_signals(close_prices, config.strategy)
-
-        # 4. 벡터화 백테스팅 실행
-        result = self._vectorized_backtest(
-            close_prices, signals, config
-        )
-
+    def _generate_signals(self, prices, strategy):
+        kind = strategy.get("type", "equal_weight")
+        if kind == "equal_weight":
+            return pd.DataFrame(1.0, index=prices.index, columns=prices.columns)
+        if kind == "momentum":
+            lookback = int(strategy.get("lookback", 20))
+            if lookback < 1:
+                raise ValueError("lookback은 1 이상이어야 합니다.")
+            return (prices.pct_change(lookback) > 0).astype(float)
+        if kind == "moving_average":
+            short, long = int(strategy.get("short_window", 20)), int(strategy.get("long_window", 60))
+            if short < 1 or short >= long:
+                raise ValueError("short_window은 long_window보다 작아야 합니다.")
+            result = pd.DataFrame(0.0, index=prices.index, columns=prices.columns)
+            for symbol in prices:
+                fast = prices[symbol].rolling(short, min_periods=long).mean()
+                slow = prices[symbol].rolling(long, min_periods=long).mean()
+                result[symbol] = (fast > slow).astype(float)
+            return result
+        if kind == "rsi":
+            period = int(strategy.get("period", 14))
+            oversold, overbought = float(strategy.get("oversold", 30)), float(strategy.get("overbought", 70))
+            if period < 2 or not 0 < oversold < overbought < 100:
+                raise ValueError("RSI 설정이 올바르지 않습니다.")
+            result = pd.DataFrame(0.0, index=prices.index, columns=prices.columns)
+            for symbol in prices:
+                rsi = self._calc_rsi(prices[symbol], period)
+                state = pd.Series(np.nan, index=prices.index)
+                state[rsi < oversold], state[rsi > overbought] = 1.0, 0.0
+                result[symbol] = state.ffill().fillna(0.0)
+            return result
+        window, num_std = int(strategy.get("window", 20)), float(strategy.get("num_std", 2))
+        if window < 2 or num_std <= 0:
+            raise ValueError("볼린저 설정이 올바르지 않습니다.")
+        result = pd.DataFrame(0.0, index=prices.index, columns=prices.columns)
+        for symbol in prices:
+            ma = prices[symbol].rolling(window, min_periods=window).mean()
+            std = prices[symbol].rolling(window, min_periods=window).std()
+            state = pd.Series(np.nan, index=prices.index)
+            state[prices[symbol] < ma - num_std * std] = 1.0
+            state[prices[symbol] > ma + num_std * std] = 0.0
+            result[symbol] = state.ffill().fillna(0.0)
         return result
 
-    def _generate_signals(
-        self, prices: pd.DataFrame, strategy: dict
-    ) -> pd.DataFrame:
-        """
-        전략에 따른 매매 시그널 생성.
-
-        Args:
-            prices: 종가 DataFrame
-            strategy: 전략 설정
-
-        Returns:
-            시그널 DataFrame (1: 매수, -1: 매도, 0: 홀드)
-        """
-        strategy_type = strategy.get("type", "equal_weight")
-
-        if strategy_type == "equal_weight":
-            # 동일 가중 매수 후 보유
-            signals = pd.DataFrame(1, index=prices.index, columns=prices.columns)
-            return signals
-
-        elif strategy_type == "momentum":
-            # 모멘텀 전략: N일 수익률 기반
-            lookback = strategy.get("lookback", 20)
-            returns = prices.pct_change(lookback)
-            signals = pd.DataFrame(0, index=prices.index, columns=prices.columns)
-            signals[returns > 0] = 1
-            signals[returns <= 0] = -1
-            return signals
-
-        elif strategy_type == "moving_average":
-            # 이동평균 크로스오버
-            short_window = strategy.get("short_window", 20)
-            long_window = strategy.get("long_window", 60)
-
-            signals = pd.DataFrame(0, index=prices.index, columns=prices.columns)
-            for col in prices.columns:
-                short_ma = prices[col].rolling(window=short_window).mean()
-                long_ma = prices[col].rolling(window=long_window).mean()
-                signals.loc[short_ma > long_ma, col] = 1
-                signals.loc[short_ma <= long_ma, col] = -1
-            return signals
-
-        elif strategy_type == "rsi":
-            # RSI 전략
-            period = strategy.get("period", 14)
-            oversold = strategy.get("oversold", 30)
-            overbought = strategy.get("overbought", 70)
-
-            signals = pd.DataFrame(0, index=prices.index, columns=prices.columns)
-            for col in prices.columns:
-                rsi = self._calc_rsi(prices[col], period)
-                signals.loc[rsi < oversold, col] = 1
-                signals.loc[rsi > overbought, col] = -1
-            return signals
-
-        elif strategy_type == "bollinger_bands":
-            # 볼린저 밴드 전략
-            window = strategy.get("window", 20)
-            num_std = strategy.get("num_std", 2)
-
-            signals = pd.DataFrame(0, index=prices.index, columns=prices.columns)
-            for col in prices.columns:
-                ma = prices[col].rolling(window=window).mean()
-                std = prices[col].rolling(window=window).std()
-                upper = ma + num_std * std
-                lower = ma - num_std * std
-                signals.loc[prices[col] < lower, col] = 1   # 하단 돌파 → 매수
-                signals.loc[prices[col] > upper, col] = -1  # 상단 돌파 → 매도
-            return signals
-
-        else:
-            # 기본: 동일 가중
-            return pd.DataFrame(1, index=prices.index, columns=prices.columns)
-
-    def _calc_rsi(self, series: pd.Series, period: int = 14) -> pd.Series:
-        """RSI 계산"""
+    @staticmethod
+    def _calc_rsi(series, period=14):
         delta = series.diff()
-        gain = (delta.where(delta > 0, 0)).rolling(window=period).mean()
-        loss = (-delta.where(delta < 0, 0)).rolling(window=period).mean()
-        rs = gain / loss
-        return 100 - (100 / (1 + rs))
+        gain = delta.clip(lower=0).ewm(alpha=1 / period, adjust=False, min_periods=period).mean()
+        loss = -delta.clip(upper=0).ewm(alpha=1 / period, adjust=False, min_periods=period).mean()
+        return 100 - 100 / (1 + gain / loss.replace(0, np.nan))
 
-    def _vectorized_backtest(
-        self,
-        prices: pd.DataFrame,
-        signals: pd.DataFrame,
-        config: BacktestConfig,
-    ) -> BacktestResult:
-        """
-        벡터화 백테스팅 실행.
+    @staticmethod
+    def _is_rebalance(date, index, period):
+        if period in {"1d", "1D", "daily"}:
+            return True
+        if period in {"1w", "1W", "weekly"}:
+            return date.weekday() == 4 or date == index[-1]
+        return date == date + pd.offsets.MonthEnd(0) or date == index[-1]
 
-        수수료와 슬리피지를 반영한 포트폴리오 수익률 계산.
-        """
-        # 일간 수익률
-        daily_returns = prices.pct_change().fillna(0)
-
-        # 시그널 기반 포지션 (1: 롱, 0: 미보유)
-        positions = signals.clip(lower=0)  # 매도 시그널은 포지션 0으로
-
-        # 포지션 변경 시점 (수수료 발생)
-        position_changes = positions.diff().fillna(0).abs()
-        transaction_costs = position_changes * (config.commission_rate + config.slippage_rate)
-
-        # 종목별 동일 가중
-        n_assets = positions.sum(axis=1).replace(0, 1)
-        weights = positions.div(n_assets, axis=0)
-
-        # 포트폴리오 수익률 = 가중 수익률 - 거래비용
-        portfolio_returns = (weights * daily_returns).sum(axis=1) - transaction_costs.sum(axis=1)
-
-        # 에퀴티 커브
-        equity_curve = (1 + portfolio_returns).cumprod() * config.initial_capital
-        equity_list = [
-            {"date": str(idx), "value": round(float(val), 0)}
-            for idx, val in equity_curve.items()
-        ]
-
-        # 성과 지표 계산
-        total_return = float(equity_curve.iloc[-1] / config.initial_capital - 1)
-
-        n_days = len(equity_curve)
-        n_years = n_days / 252
-        cagr = float((equity_curve.iloc[-1] / config.initial_capital) ** (1 / max(n_years, 0.01)) - 1)
-
-        # 샤프 비율 (연율화)
-        if portfolio_returns.std() > 0:
-            sharpe_ratio = float(
-                portfolio_returns.mean() / portfolio_returns.std() * np.sqrt(252)
-            )
-        else:
-            sharpe_ratio = 0.0
-
-        # 소르티노 비율
-        downside_returns = portfolio_returns[portfolio_returns < 0]
-        if len(downside_returns) > 0 and downside_returns.std() > 0:
-            sortino_ratio = float(
-                portfolio_returns.mean() / downside_returns.std() * np.sqrt(252)
-            )
-        else:
-            sortino_ratio = 0.0
-
-        # 최대 낙폭 (MDD)
-        running_max = equity_curve.cummax()
-        drawdown = (equity_curve - running_max) / running_max
-        max_drawdown = float(drawdown.min())
-
-        # 승률 & 손익비
-        winning_days = portfolio_returns[portfolio_returns > 0]
-        losing_days = portfolio_returns[portfolio_returns < 0]
-        win_rate = float(len(winning_days) / max(len(winning_days) + len(losing_days), 1))
-
-        avg_win = float(winning_days.mean()) if len(winning_days) > 0 else 0
-        avg_loss = float(abs(losing_days.mean())) if len(losing_days) > 0 else 0.0001
-        profit_loss_ratio = avg_win / max(avg_loss, 0.0001)
-
-        # 총 거래 횟수
-        total_trades = int(position_changes.sum().sum())
-
-        # 월별 수익률
-        monthly_equity = equity_curve.resample("ME").last()
-        monthly_rets = monthly_equity.pct_change().dropna()
-        monthly_returns_list = [
-            {"date": str(idx), "return": round(float(val), 4)}
-            for idx, val in monthly_rets.items()
-        ]
-
-        return BacktestResult(
-            total_return=round(total_return, 4),
-            cagr=round(cagr, 4),
-            sharpe_ratio=round(sharpe_ratio, 2),
-            sortino_ratio=round(sortino_ratio, 2),
-            max_drawdown=round(max_drawdown, 4),
-            win_rate=round(win_rate, 4),
-            profit_loss_ratio=round(profit_loss_ratio, 2),
-            total_trades=total_trades,
-            equity_curve=equity_list,
-            monthly_returns=monthly_returns_list,
-        )
+    def _event_backtest(self, opens, closes, signals, config):
+        index = closes.index.intersection(opens.index).sort_values()
+        opens, closes, signals = opens.reindex(index), closes.reindex(index), signals.reindex(index)
+        symbols = list(closes.columns)
+        cash, holdings, pending = float(config.initial_capital), pd.Series(0.0, index=symbols), pd.Series(0.0, index=symbols)
+        rows, returns, trades, previous_equity = [], [], 0, float(config.initial_capital)
+        for i, date in enumerate(index):
+            if i > 0:
+                prices = opens.loc[date].reindex(symbols)
+                equity = cash + float((holdings * prices.fillna(0)).sum())
+                desired = pending * equity
+                current = holdings * prices.fillna(0)
+                for symbol in symbols:
+                    price = prices[symbol]
+                    if pd.isna(price) or price <= 0:
+                        continue
+                    delta = desired[symbol] - current[symbol]
+                    if delta > 0:
+                        qty = min(delta / price, max(cash, 0) / (price * (1 + config.commission_rate + config.slippage_rate)))
+                        qty = np.floor(qty / config.quantity_step) * config.quantity_step
+                        gross, fee = qty * price, qty * price * (config.commission_rate + config.slippage_rate)
+                        holdings[symbol] += qty; cash -= gross + fee; trades += int(qty > 0)
+                    elif delta < 0:
+                        qty = min(holdings[symbol], -delta / price)
+                        qty = np.floor(qty / config.quantity_step) * config.quantity_step
+                        gross, fee = qty * price, qty * price * (config.commission_rate + config.slippage_rate + config.transaction_tax_rate)
+                        holdings[symbol] -= qty; cash += gross - fee; trades += int(qty > 0)
+            close = closes.loc[date].reindex(symbols)
+            equity = cash + float((holdings * close.ffill().fillna(0)).sum())
+            if previous_equity > 0 and i > 0:
+                returns.append(equity / previous_equity - 1)
+            previous_equity = equity
+            rows.append({"date": date.isoformat(), "value": round(equity, 2)})
+            raw = signals.loc[date].reindex(symbols).fillna(0).clip(0, 1)
+            if i == 0 or self._is_rebalance(date, index, config.rebalance_period):
+                pending = raw / raw.sum() if raw.sum() > 0 else raw
+        equity = pd.Series([r["value"] for r in rows], index=index)
+        ret = pd.Series(returns, index=index[1:]).replace([np.inf, -np.inf], np.nan).dropna()
+        annual = ANNUALIZATION[config.market]
+        years = max((index[-1] - index[0]).total_seconds() / 86400 / 365.25, 1 / 365.25)
+        total = float(equity.iloc[-1] / config.initial_capital - 1)
+        cagr = float((equity.iloc[-1] / config.initial_capital) ** (1 / years) - 1)
+        std = ret.std(ddof=1)
+        sharpe = float(ret.mean() / std * np.sqrt(annual)) if std and not np.isnan(std) else 0.0
+        downside = np.minimum(ret, 0.0)
+        ddv = float(np.sqrt(np.mean(np.square(downside)))) if len(ret) else 0.0
+        sortino = float(ret.mean() / ddv * np.sqrt(annual)) if ddv else 0.0
+        drawdown = equity / equity.cummax() - 1
+        wins, losses = ret[ret > 0], ret[ret < 0]
+        monthly = equity.resample("ME").last().pct_change(fill_method=None)
+        month_end = equity.resample("ME").last()
+        if len(month_end):
+            monthly.iloc[0] = month_end.iloc[0] / config.initial_capital - 1
+        return BacktestResult(total, cagr, sharpe, sortino, float(drawdown.min()),
+            float(len(wins) / max(len(wins) + len(losses), 1)),
+            float(wins.mean() / abs(losses.mean())) if len(wins) and len(losses) else 0.0, trades, rows,
+            [{"date": str(d.date()), "return": round(float(v), 6)} for d, v in monthly.dropna().items()])

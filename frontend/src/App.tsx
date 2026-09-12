@@ -10,7 +10,8 @@ import Dashboard from './components/Dashboard';
 import ScreenerPanel from './components/ScreenerPanel';
 import BacktestPanel from './components/BacktestPanel';
 import ChartView from './components/ChartView';
-import { PieChart, Bot, Settings } from 'lucide-react';
+import TradingPanel from './components/TradingPanel';
+import { PieChart, Settings } from 'lucide-react';
 import { useI18n } from './hooks/useI18n';
 
 function ComingSoonPage({ title, icon: Icon }: { title: string; icon: React.ElementType }) {
@@ -47,7 +48,7 @@ export default function App() {
       case 'portfolio':
         return <ComingSoonPage title={t('nav.portfolio')} icon={PieChart} />;
       case 'trading':
-        return <ComingSoonPage title={t('nav.trading')} icon={Bot} />;
+        return <TradingPanel />;
       case 'settings':
         return <ComingSoonPage title={t('nav.settings')} icon={Settings} />;
       default:

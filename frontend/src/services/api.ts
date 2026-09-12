@@ -143,4 +143,35 @@ export const backtestApi = {
 
 export const healthCheck = () => api.get('/api/health');
 
+export interface PaperAccount {
+  id: string;
+  name: string;
+  mode: 'paper';
+  market: string;
+  currency: string;
+  initial_cash: string;
+  status: string;
+}
+
+export interface Deployment {
+  id: string;
+  account_id: string;
+  mode: 'paper';
+  strategy: Record<string, unknown>;
+  desired_state: string;
+  observed_state: string;
+  revision: number;
+  pause_epoch: number;
+}
+
+export const operationsApi = {
+  accounts: () => api.get<PaperAccount[]>('/api/v1/accounts'),
+  createPaperAccount: (body: { name: string; market: string; currency: string; initial_cash: string }) =>
+    api.post<PaperAccount>('/api/v1/accounts/paper', body),
+  snapshot: (accountId: string) => api.get(`/api/v1/accounts/${accountId}/snapshot`),
+  deployment: (id: string) => api.get<Deployment>(`/api/v1/deployments/${id}`),
+  command: (id: string, type: 'START' | 'PAUSE' | 'CANCEL_OPEN' | 'LIQUIDATE' | 'RESUME' | 'ARCHIVE') =>
+    api.post(`/api/v1/deployments/${id}/commands`, { type, reason: `UI:${type}` }),
+};
+
 export default api;
