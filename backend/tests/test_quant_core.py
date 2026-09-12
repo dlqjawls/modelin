@@ -35,6 +35,7 @@ from core.market_context import MacroContext, NewsEventEngine
 from workers.run_paper import load_deployment
 from core.strategy_comparator import compare_strategies
 from adapters.brokers.alpaca import AlpacaBrokerAdapter, AlpacaConfig
+from core.live_gate import LiveTradingGate
 from tempfile import TemporaryDirectory
 
 
@@ -476,6 +477,21 @@ class QuantCoreTests(unittest.TestCase):
         capabilities, result = asyncio.run(scenario())
         self.assertFalse(capabilities.supports_live)
         self.assertEqual(result["broker_order_id"], "alpaca-1")
+
+    def test_live_gate_fails_closed_until_every_condition_is_explicit(self):
+        paper_capabilities = type("Capabilities", (), {"supports_live": False})()
+        gate = LiveTradingGate("wrong")
+        allowed, reason = gate.authorize(deployment={"mode": "live"},
+                                         capabilities=paper_capabilities, order_notional=Decimal("1"))
+        self.assertFalse(allowed)
+        self.assertEqual(reason, "EXPLICIT_APPROVAL_REQUIRED")
+        live_capabilities = type("Capabilities", (), {"supports_live": True})()
+        gate = LiveTradingGate("I_UNDERSTAND_LIVE_TRADING")
+        allowed, reason = gate.authorize(
+            deployment={"mode": "live", "live_confirmed": True, "max_order_notional": "100"},
+            capabilities=live_capabilities, order_notional=Decimal("10"))
+        self.assertTrue(allowed)
+        self.assertEqual(reason, "AUTHORIZED")
 
     def test_registry_requires_explicit_kis_paper_registration(self):
         registry = BrokerRegistry()

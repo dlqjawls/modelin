@@ -37,6 +37,8 @@ live 어댑터는 기본 등록하지 않는다. paper/live 모드를 계좌 생
 - KIS 체결 웹소켓 운영 consumer(REST 재대사 polling은 구현됨)
 - 장기간 paper 운용 후 실거래 전환 검토
 
+실거래 gate는 명시적 승인 문자열, live capability, 배포 확인, 주문 금액 한도를 모두 요구하며 기본값은 차단이다.
+
 GitHub Actions CI가 master push와 pull request마다 백엔드 테스트·컴파일과 프론트엔드 production build를 수행한다.
 
 ## 적응형 전략 방향
