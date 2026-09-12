@@ -40,6 +40,9 @@ class Settings:
     CACHE_TTL_SECONDS: int = int(os.getenv("CACHE_TTL_SECONDS", "300"))  # 5분
     MAX_OHLCV_DAYS: int = int(os.getenv("MAX_OHLCV_DAYS", "3650"))  # 10년
     PAPER_DB_PATH: str = os.getenv("PAPER_DB_PATH", "modelin-paper.sqlite3")
+    PAPER_WORKER_ENABLED: bool = os.getenv("PAPER_WORKER_ENABLED", "false").lower() == "true"
+    PAPER_DEPLOYMENT_FILE: str = os.getenv("PAPER_DEPLOYMENT_FILE", "")
+    PAPER_WORKER_INTERVAL_SECONDS: int = int(os.getenv("PAPER_WORKER_INTERVAL_SECONDS", "300"))
 
 
 settings = Settings()
