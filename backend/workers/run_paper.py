@@ -42,14 +42,12 @@ def load_deployment(path):
 
 
 async def run(deployment, interval_seconds, once=False, deployment_loader=None):
-    if deployment["market"] == "krx":
+    if deployment["market"] in {"krx", "us"}:
         broker = KISBrokerAdapter(KISConfig(
             app_key=settings.KIS_APP_KEY, app_secret=settings.KIS_APP_SECRET,
-            account_no=settings.KIS_ACCOUNT_NO, environment="paper"))
-        data = ProviderMarketDataAdapter(KRXProvider(), "krx")
-    else:
-        raise RuntimeError("KIS 해외주식 주문 어댑터가 아직 구현되지 않아 US worker를 시작할 수 없습니다.")
-        data = ProviderMarketDataAdapter(USProvider(), "us")
+            account_no=settings.KIS_ACCOUNT_NO, environment="paper",
+            market=deployment["market"], exchange=deployment.get("exchange", "NASD")))
+        data = ProviderMarketDataAdapter(KRXProvider(), "krx") if deployment["market"] == "krx" else ProviderMarketDataAdapter(USProvider(), "us")
     journal = ExecutionJournal(settings.PAPER_DB_PATH)
     recovery = await recover_pending_submissions(journal, broker)
     if recovery["unknown"]:

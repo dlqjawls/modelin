@@ -444,6 +444,27 @@ class QuantCoreTests(unittest.TestCase):
         self.assertEqual(calls[-1].headers["tr_id"], "VTTC0802U")
         self.assertEqual(calls[-1].headers["hashkey"], "hash")
 
+    def test_kis_paper_adapter_maps_us_overseas_order(self):
+        calls = []
+        def handler(request):
+            calls.append(request)
+            if request.url.path == "/oauth2/tokenP":
+                return httpx.Response(200, json={"access_token": "token", "rt_cd": "0"})
+            if request.url.path == "/uapi/hashkey":
+                return httpx.Response(200, json={"HASH": "hash", "rt_cd": "0"})
+            return httpx.Response(200, json={"rt_cd": "0", "output": {"ODNO": "us-123"}})
+        async def scenario():
+            async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+                adapter = KISBrokerAdapter(KISConfig("key", "secret", "12345678", environment="paper", market="us"), client)
+                capabilities = await adapter.capabilities()
+                result = await adapter.submit(OrderRequest("12345678", "client-us-1", "AAPL", "buy", Decimal("1"), limit_price=Decimal("200")))
+                return capabilities, result
+        capabilities, result = asyncio.run(scenario())
+        self.assertEqual(capabilities.market, "us")
+        self.assertEqual(result["broker_order_id"], "us-123")
+        self.assertEqual(calls[-1].url.path, "/uapi/overseas-stock/v1/trading/order")
+        self.assertEqual(calls[-1].headers["tr_id"], "VTTT1002U")
+
     def test_kis_order_events_polls_daily_orders_with_cursor(self):
         def handler(request):
             if request.url.path == "/oauth2/tokenP":
