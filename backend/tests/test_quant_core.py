@@ -34,6 +34,7 @@ from core.regime_router import RegimeDetector, StrategyRouter
 from core.market_context import MacroContext, NewsEventEngine
 from workers.run_paper import load_deployment
 from core.strategy_comparator import compare_strategies
+from adapters.brokers.alpaca import AlpacaBrokerAdapter, AlpacaConfig
 from tempfile import TemporaryDirectory
 
 
@@ -454,6 +455,23 @@ class QuantCoreTests(unittest.TestCase):
         subscription = asyncio.run(scenario())
         self.assertIn("31000", subscription["url"])
         self.assertEqual(subscription["subscriptions"][0]["tr_id"], "H0STCNI0")
+
+    def test_alpaca_paper_order_mapping_never_enables_live(self):
+        calls = []
+        def handler(request):
+            calls.append(request)
+            if request.url.path == "/v2/orders" and request.method == "POST":
+                return httpx.Response(200, json={"id": "alpaca-1", "status": "accepted"})
+            return httpx.Response(200, json=[])
+        async def scenario():
+            async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+                adapter = AlpacaBrokerAdapter(AlpacaConfig("key", "secret"), client)
+                capabilities = await adapter.capabilities()
+                result = await adapter.submit(OrderRequest("key", "client-1", "AAPL", "buy", Decimal("1"), Decimal("100")))
+                return capabilities, result
+        capabilities, result = asyncio.run(scenario())
+        self.assertFalse(capabilities.supports_live)
+        self.assertEqual(result["broker_order_id"], "alpaca-1")
 
     def test_registry_requires_explicit_kis_paper_registration(self):
         registry = BrokerRegistry()

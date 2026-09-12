@@ -28,6 +28,8 @@ class Settings:
     KIS_APP_SECRET: str = os.getenv("KIS_APP_SECRET", "")
     KIS_ACCOUNT_NO: str = os.getenv("KIS_ACCOUNT_NO", "")
     KIS_ENVIRONMENT: str = os.getenv("KIS_ENVIRONMENT", "paper")
+    ALPACA_API_KEY: str = os.getenv("ALPACA_API_KEY", "")
+    ALPACA_API_SECRET: str = os.getenv("ALPACA_API_SECRET", "")
 
     # === Server ===
     HOST: str = os.getenv("HOST", "0.0.0.0")
