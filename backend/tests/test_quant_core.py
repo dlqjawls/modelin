@@ -33,10 +33,21 @@ from core.persistent_paper_broker import PersistentPaperBroker
 from core.regime_router import RegimeDetector, StrategyRouter
 from core.market_context import MacroContext, NewsEventEngine
 from workers.run_paper import load_deployment
+from core.strategy_comparator import compare_strategies
 from tempfile import TemporaryDirectory
 
 
 class QuantCoreTests(unittest.TestCase):
+    def test_strategy_comparator_uses_same_sample_and_returns_ranked_scores(self):
+        index = pd.date_range("2024-01-01", periods=80)
+        closes = pd.DataFrame({"A": [100 + i for i in range(80)]}, index=index)
+        opens = closes.copy()
+        scores = compare_strategies(opens, closes, symbols=["A"],
+                                    strategies=[{"type": "equal_weight"}, {"type": "momentum", "lookback": 5}])
+        self.assertEqual(len(scores), 2)
+        self.assertGreaterEqual(scores[0].score, scores[1].score)
+        self.assertTrue(all(item.total_trades >= 0 for item in scores))
+
     def test_adaptive_risk_off_blocks_before_broker_submission(self):
         class CountingBroker:
             def __init__(self): self.submissions = 0
