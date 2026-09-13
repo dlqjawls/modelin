@@ -155,3 +155,9 @@ def test_provider_value_objects_live_in_domain_contracts():
     source = (BACKEND / "data" / "providers" / "base.py").read_text(encoding="utf-8")
     assert "class AssetInfo" not in source
     assert "class FundamentalData" not in source
+
+
+def test_market_data_application_uses_port_contract():
+    source = (BACKEND / "application" / "market_data_service.py").read_text(encoding="utf-8")
+    assert "from ports.market_data import ResearchMarketDataProvider" in source
+    assert "data.providers" not in source
