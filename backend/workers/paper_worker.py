@@ -13,7 +13,7 @@ from decimal import Decimal
 import pandas as pd
 
 from application.paper_decision import PaperDecisionService
-from ports.broker import OrderRequest
+from application.paper_execution import PaperExecutionService
 from core.calendar import TradingCalendar
 from core.scheduler import PaperScheduler
 from core.execution_journal import ExecutionJournal
@@ -67,7 +67,7 @@ def readiness_result(deployment: dict, *, has_data: bool, reconciled: bool = Tru
 
 async def execute_once(deployment: dict, *, close_prices: pd.DataFrame, prices: dict, broker,
                        account_snapshot: dict, journal=None, schedule_key=None,
-                       decision_service=None) -> dict:
+                       decision_service=None, execution_service=None) -> dict:
     """Evaluate one paper deployment and submit only paper-port orders.
 
     The broker is dependency-injected; this function never discovers or
@@ -92,6 +92,7 @@ async def execute_once(deployment: dict, *, close_prices: pd.DataFrame, prices: 
         if Decimal(str(prices.get(item["symbol"], 0))) > 0
     }
     decision_service = decision_service or PaperDecisionService()
+    execution_service = execution_service or PaperExecutionService()
     decision = decision_service.evaluate(close_prices, deployment["strategy"], current_weights,
                                          deployment.get("cash_buffer", "0.10"))
     if decision.kind == "BLOCKED":
@@ -121,21 +122,17 @@ async def execute_once(deployment: dict, *, close_prices: pd.DataFrame, prices: 
                                                   for intent in intents])
         if existing_run:
             return {"status": "already_journaled", "reason_codes": decision.reason_codes, "orders": journal_rows}
-    submitted = []
-    for intent in intents:
-        client_order_id = client_ids[intent.symbol]
-        request = OrderRequest(account_id=deployment["account_id"], client_order_id=client_order_id,
-                               symbol=intent.symbol, side=intent.side, quantity=intent.quantity,
-                               limit_price=intent.reference_price)
-        result = await broker.submit(request)
-        if journal is not None:
-            journal.mark_submitted(request.client_order_id, result)
-        submitted.append(result)
+    submitted = await execution_service.submit_intents(
+        deployment=deployment, intents=intents, broker=broker, client_ids=client_ids,
+    )
+    if journal is not None:
+        for intent, result in zip(intents, submitted):
+            journal.mark_submitted(client_ids[intent.symbol], result)
     return {"status": "executed", "reason_codes": decision.reason_codes, "orders": submitted}
 
 
 async def execute_from_market_data(deployment: dict, *, data_adapter, broker, as_of, journal=None,
-                                   decision_service=None):
+                                   decision_service=None, execution_service=None):
     """Fetch a normalized snapshot and execute one safe paper cycle."""
     if deployment.get("mode") != "paper":
         raise RuntimeError("live deployment은 아직 지원되지 않습니다.")
@@ -164,30 +161,28 @@ async def execute_from_market_data(deployment: dict, *, data_adapter, broker, as
     account = await broker.account_snapshot()
     schedule_key = latest_end.isoformat()
     if deployment.get("observed_state") == "LIQUIDATING":
-        liquidation_orders = []
-        for position in account.get("positions", []):
-            symbol = position.get("symbol")
-            quantity = Decimal(str(position.get("quantity", "0")))
-            price = latest.get(symbol)
-            if not symbol or quantity <= 0 or price is None or price <= 0:
-                continue
-            request = OrderRequest(
-                account_id=deployment["account_id"],
-                client_order_id=f"liquidate-{deployment['id']}-{schedule_key}-{symbol}",
-                symbol=symbol, side="sell", quantity=quantity, limit_price=price,
-            )
-            liquidation_orders.append(await broker.submit(request))
+        execution_service = execution_service or PaperExecutionService()
+        liquidation_orders = await execution_service.liquidate(
+            deployment=deployment, positions=account.get("positions", []),
+            prices=latest, broker=broker, schedule_key=schedule_key,
+        )
         return {"status": "liquidated", "orders": liquidation_orders}
     return await execute_once(deployment, close_prices=close_prices,
                                prices=latest, broker=broker, account_snapshot=account,
                                journal=journal, schedule_key=schedule_key,
-                               decision_service=decision_service)
+                               decision_service=decision_service,
+                               execution_service=execution_service)
 
 
 def paper_cycle_service():
     """Return the application boundary used by external worker entry points."""
     from application.container import get_container
-    return PaperCycleService(execute_from_market_data, get_container().paper_decisions)
+    container = get_container()
+    return PaperCycleService(
+        execute_from_market_data,
+        container.paper_decisions,
+        container.paper_execution,
+    )
 
 
 async def serve(deployment_loader, interval_seconds: int = 60, execute=None, scheduler=None):
