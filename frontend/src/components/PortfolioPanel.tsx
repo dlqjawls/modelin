@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { BarChart3, Loader2 } from 'lucide-react';
-import { portfolioApi, type PortfolioOptimizationResult } from '../services/api';
+import { portfolioApi, type PortfolioOptimizationResult } from '../services/research';
 
 const methods = [['equal_weight', '동일 가중'], ['inverse_volatility', '변동성 역가중'], ['min_volatility', '최소 변동성']];
 

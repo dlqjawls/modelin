@@ -23,7 +23,7 @@ import {
   type BacktestConfig,
   type BacktestResult,
   type StrategyScore,
-} from '../services/api';
+} from '../services/research';
 
 const STRATEGIES = [
   { value: 'equal_weight', label: '동일 가중 (Buy & Hold)' },

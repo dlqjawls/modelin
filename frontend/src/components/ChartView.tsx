@@ -14,7 +14,7 @@ import {
 } from 'lightweight-charts';
 import { RefreshCw, Search, AlertCircle } from 'lucide-react';
 import { useI18n } from '../hooks/useI18n';
-import { marketApi, type OHLCVItem } from '../services/api';
+import { marketApi, type OHLCVItem } from '../services/research';
 
 const QUICK_SYMBOLS = {
   krx: [

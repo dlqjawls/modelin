@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Activity, RefreshCw } from 'lucide-react';
-import { healthCheck, getApiErrorMessage, operationsApi, type DiagnosticsResponse, type PaperAccount, type AccountSnapshotResponse, type Deployment } from '../services/api';
+import { healthCheck } from '../services/api';
+import { getApiErrorMessage } from '../services/client';
+import { operationsApi } from '../services/operations';
+import type { DiagnosticsResponse, PaperAccount, AccountSnapshotResponse, Deployment } from '../contracts/operations';
 
 export default function TradingPanel() {
   const [accounts, setAccounts] = useState<PaperAccount[]>([]);

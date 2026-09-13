@@ -23,7 +23,7 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from 'recharts';
-import { marketApi, type AssetInfo, type OHLCVItem } from '../services/api';
+import { marketApi, type AssetInfo, type OHLCVItem } from '../services/research';
 
 interface WatchlistItem extends AssetInfo {
   price: number;

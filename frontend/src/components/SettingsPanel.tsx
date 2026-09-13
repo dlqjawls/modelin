@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import { RefreshCw, Settings } from 'lucide-react';
-import { getApiErrorMessage, healthCheck, operationsApi, type DiagnosticsResponse, type HealthResponse, type LiveDiagnosticsResponse } from '../services/api';
+import { healthCheck } from '../services/api';
+import { getApiErrorMessage } from '../services/client';
+import { operationsApi } from '../services/operations';
+import type { DiagnosticsResponse, HealthResponse, LiveDiagnosticsResponse } from '../contracts/operations';
 
 export default function SettingsPanel() {
   const [health, setHealth] = useState<HealthResponse | null>(null);

@@ -9,7 +9,7 @@ import {
   screenerApi,
   type ScreenerCondition,
   type ScreenerResultItem,
-} from '../services/api';
+} from '../services/research';
 
 interface UIExtendedCondition {
   id: number;
