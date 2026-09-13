@@ -33,6 +33,13 @@ py -m pytest -q
 
 세 항목이 모두 `"status": "ok"`이면 현재 설정으로 읽기 연결이 확인된 것이다. KIS 자격증명이 없으면 해당 시장은 `missing_credentials`로 표시되며, FRED API 키가 없어도 공개 CSV 경로가 자동으로 사용된다.
 
+KIS paper 체결 알림을 읽기 전용으로 확인하려면 다음을 실행한다. 이 listener는 체결 알림을 수신만 하며 주문을 만들지 않는다.
+
+```powershell
+$env:PYTHONPATH = (Join-Path (Get-Location) 'backend')
+py scripts/listen-kis-executions.py 005930
+```
+
 ## 중지와 안전 규칙
 
 터미널에서 `Ctrl+C`로 서버와 worker를 함께 중지한다. 코인 deployment는 runner가 거절하고, live broker는 기본 등록되지 않는다. 시작 전에 `--once` 실행으로 시장 캘린더와 데이터 공급자를 먼저 확인할 수 있다.
