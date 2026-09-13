@@ -17,6 +17,7 @@ from application.operations_query_service import OperationsQueryService
 from application.account_query_service import AccountQueryService
 from application.broker_query_service import BrokerQueryService
 from application.idempotency_service import IdempotencyService
+from application.paper_decision import PaperDecisionService
 
 
 @dataclass(frozen=True)
@@ -30,6 +31,7 @@ class ApplicationContainer:
     account_queries: AccountQueryService
     broker_queries: BrokerQueryService
     idempotency: IdempotencyService
+    paper_decisions: PaperDecisionService
 
 
 @lru_cache(maxsize=1)
@@ -46,4 +48,5 @@ def get_container() -> ApplicationContainer:
         account_queries=AccountQueryService(store, settings.PAPER_DB_PATH),
         broker_queries=BrokerQueryService(store, registry, settings.PAPER_DB_PATH),
         idempotency=IdempotencyService(store),
+        paper_decisions=PaperDecisionService(),
     )

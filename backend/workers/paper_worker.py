@@ -12,8 +12,7 @@ from decimal import Decimal
 
 import pandas as pd
 
-from core.order_planner import OrderPlanner
-from core.strategy_runtime import StrategyRuntime
+from application.paper_decision import PaperDecisionService
 from ports.broker import OrderRequest
 from core.calendar import TradingCalendar
 from core.scheduler import PaperScheduler
@@ -67,7 +66,8 @@ def readiness_result(deployment: dict, *, has_data: bool, reconciled: bool = Tru
 
 
 async def execute_once(deployment: dict, *, close_prices: pd.DataFrame, prices: dict, broker,
-                       account_snapshot: dict, journal=None, schedule_key=None) -> dict:
+                       account_snapshot: dict, journal=None, schedule_key=None,
+                       decision_service=None) -> dict:
     """Evaluate one paper deployment and submit only paper-port orders.
 
     The broker is dependency-injected; this function never discovers or
@@ -91,19 +91,20 @@ async def execute_once(deployment: dict, *, close_prices: pd.DataFrame, prices: 
         for item in account_snapshot.get("positions", [])
         if Decimal(str(prices.get(item["symbol"], 0))) > 0
     }
-    decision = StrategyRuntime().evaluate(close_prices, deployment["strategy"], current_weights,
-                                          deployment.get("cash_buffer", "0.10"))
+    decision_service = decision_service or PaperDecisionService()
+    decision = decision_service.evaluate(close_prices, deployment["strategy"], current_weights,
+                                         deployment.get("cash_buffer", "0.10"))
     if decision.kind == "BLOCKED":
         return {"status": "blocked", "reason_codes": decision.reason_codes, "orders": []}
     if decision.kind == "NO_CHANGE":
         return {"status": "no_change", "reason_codes": decision.reason_codes, "orders": []}
     positions = {f"{p['symbol']}": p for p in account_snapshot.get("positions", [])}
-    planner = OrderPlanner(cash_buffer=deployment.get("cash_buffer", "0.10"),
-                           max_asset_weight=deployment.get("max_asset_weight", "1"))
     allocation = Decimal(str(deployment.get("allocation_amount", nav)))
     planning_nav = min(nav, allocation)
-    intents = planner.plan(cash=account_snapshot["cash"], target_weights=decision.target_weights,
-                           positions=positions, prices=prices, nav=planning_nav)
+    intents = decision_service.plan_orders(
+        cash=account_snapshot["cash"], target_weights=decision.target_weights,
+        positions=positions, prices=prices, nav=planning_nav, deployment=deployment,
+    )
     last_index = close_prices.index[-1]
     default_schedule_key = last_index.isoformat() if hasattr(last_index, "isoformat") else str(last_index)
     schedule_key = schedule_key or default_schedule_key
@@ -133,7 +134,8 @@ async def execute_once(deployment: dict, *, close_prices: pd.DataFrame, prices: 
     return {"status": "executed", "reason_codes": decision.reason_codes, "orders": submitted}
 
 
-async def execute_from_market_data(deployment: dict, *, data_adapter, broker, as_of, journal=None):
+async def execute_from_market_data(deployment: dict, *, data_adapter, broker, as_of, journal=None,
+                                   decision_service=None):
     """Fetch a normalized snapshot and execute one safe paper cycle."""
     if deployment.get("mode") != "paper":
         raise RuntimeError("live deployment은 아직 지원되지 않습니다.")
@@ -178,12 +180,14 @@ async def execute_from_market_data(deployment: dict, *, data_adapter, broker, as
         return {"status": "liquidated", "orders": liquidation_orders}
     return await execute_once(deployment, close_prices=close_prices,
                                prices=latest, broker=broker, account_snapshot=account,
-                               journal=journal, schedule_key=schedule_key)
+                               journal=journal, schedule_key=schedule_key,
+                               decision_service=decision_service)
 
 
 def paper_cycle_service():
     """Return the application boundary used by external worker entry points."""
-    return PaperCycleService(execute_from_market_data)
+    from application.container import get_container
+    return PaperCycleService(execute_from_market_data, get_container().paper_decisions)
 
 
 async def serve(deployment_loader, interval_seconds: int = 60, execute=None, scheduler=None):

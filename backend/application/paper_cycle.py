@@ -18,8 +18,9 @@ class PaperCycleRequest:
 class PaperCycleService:
     """Coordinate a single paper cycle without constructing adapters."""
 
-    def __init__(self, execute_cycle: Callable[..., Awaitable[dict]]):
+    def __init__(self, execute_cycle: Callable[..., Awaitable[dict]], decision_service=None):
         self._execute_cycle = execute_cycle
+        self._decision_service = decision_service
 
     async def execute(self, request: PaperCycleRequest, *, data_adapter, broker, journal=None) -> dict:
         if request.deployment.get("mode") != "paper":
@@ -30,4 +31,5 @@ class PaperCycleService:
             broker=broker,
             as_of=request.as_of,
             journal=journal,
+            decision_service=self._decision_service,
         )
