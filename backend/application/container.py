@@ -8,6 +8,9 @@ from functools import lru_cache
 
 from config import settings
 from adapters.brokers.registry import BrokerRegistry
+from adapters.market_data.fred_macro import FredMacroContext
+from adapters.market_data.news_feed import RSSNewsContext
+from adapters.market_data.official_sources import OpenDartClient, SecSubmissionsClient
 from core.operations_store import OperationsStore
 
 from application.deployment_service import DeploymentService
@@ -59,6 +62,11 @@ def get_container() -> ApplicationContainer:
         paper_decisions=PaperDecisionService(),
         paper_execution=PaperExecutionService(),
         market_snapshots=PaperMarketSnapshotService(),
-        paper_context=PaperContextService(),
+        paper_context=PaperContextService(
+            news_factory=RSSNewsContext,
+            macro_factory=FredMacroContext,
+            dart_factory=OpenDartClient,
+            sec_factory=SecSubmissionsClient,
+        ),
         system_queries=SystemQueryService(settings, store),
     )

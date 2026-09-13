@@ -33,3 +33,11 @@ def test_application_does_not_depend_on_api_or_frontend():
     forbidden = {"api", "frontend"}
     violations = [(path, module) for path, module in _imports_under("application") if module in forbidden]
     assert not violations, f"application imports delivery modules: {violations}"
+
+
+def test_paper_context_service_does_not_construct_external_adapters():
+    path = BACKEND / "application" / "paper_context.py"
+    imports = list(_imports_under("application"))
+    violations = [(source, module) for source, module in imports
+                  if source == path and module == "adapters"]
+    assert not violations, f"paper context service imports adapters directly: {violations}"

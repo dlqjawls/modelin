@@ -1,22 +1,31 @@
 """Build bounded macro/news context for a paper deployment."""
-from adapters.market_data.fred_macro import FredMacroContext
-from adapters.market_data.news_feed import RSSNewsContext
-from adapters.market_data.official_sources import OpenDartClient, SecSubmissionsClient
+from collections.abc import Callable
+
 from config import settings as default_settings
 from core.market_context import MacroContext, NewsEventEngine
 
 
 class PaperContextService:
-    def __init__(self, config=default_settings):
+    def __init__(self, config=default_settings, *, news_factory: Callable | None = None,
+                 macro_factory: Callable | None = None, dart_factory: Callable | None = None,
+                 sec_factory: Callable | None = None):
         self.config = config
+        self.news_factory = news_factory
+        self.macro_factory = macro_factory
+        self.dart_factory = dart_factory
+        self.sec_factory = sec_factory
 
     async def enrich(self, deployment: dict) -> dict:
         current = deployment
         if self.config.NEWS_FEEDS:
-            news_context = await RSSNewsContext(self.config.NEWS_FEEDS).collect()
+            if self.news_factory is None:
+                raise RuntimeError("뉴스 context provider가 구성되지 않았습니다.")
+            news_context = await self.news_factory(self.config.NEWS_FEEDS).collect()
             current = self._with_context(current, news_context)
         if self.config.FRED_API_KEY or self.config.PAPER_WORKER_ENABLED:
-            macro = await FredMacroContext(self.config.FRED_API_KEY).collect()
+            if self.macro_factory is None:
+                raise RuntimeError("macro context provider가 구성되지 않았습니다.")
+            macro = await self.macro_factory(self.config.FRED_API_KEY).collect()
             strategy = current["strategy"]
             context = MacroContext.build(
                 fx_change_20d=macro.get("fx_change_20d", 0.0),
@@ -41,11 +50,15 @@ class PaperContextService:
             return []
         events = []
         if self.config.OPENDART_API_KEY:
-            dart = OpenDartClient(self.config.OPENDART_API_KEY)
+            if self.dart_factory is None:
+                raise RuntimeError("OpenDART provider가 구성되지 않았습니다.")
+            dart = self.dart_factory(self.config.OPENDART_API_KEY)
             for corp_code in deployment.get("corp_codes", []):
                 events.extend(await dart.filings(corp_code=corp_code))
         if self.config.SEC_USER_AGENT:
-            sec = SecSubmissionsClient(self.config.SEC_USER_AGENT)
+            if self.sec_factory is None:
+                raise RuntimeError("SEC provider가 구성되지 않았습니다.")
+            sec = self.sec_factory(self.config.SEC_USER_AGENT)
             for cik in self.config.SEC_CIKS:
                 events.extend(await sec.filings(cik))
         return events
