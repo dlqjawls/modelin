@@ -36,6 +36,18 @@ def main() -> int:
     context_path = ROOT / "application" / "paper_context.py"
     if any(path == context_path and module == "adapters" for path, module in imports_under("application")):
         violations.append((context_path.relative_to(ROOT), "adapters"))
+    frontend_api = ROOT / "api"
+    for path in frontend_api.glob("*.py"):
+        tree = ast.parse(path.read_text(encoding="utf-8"))
+        for node in tree.body:
+            if (
+                isinstance(node, ast.Assign)
+                and isinstance(node.value, ast.Attribute)
+                and isinstance(node.value.value, ast.Call)
+                and isinstance(node.value.value.func, ast.Name)
+                and node.value.value.func.id == "get_container"
+            ):
+                violations.append((path.relative_to(ROOT), "import-time get_container()"))
     if violations:
         for path, module in violations:
             print(f"boundary violation: {path} imports {module}")
