@@ -102,8 +102,8 @@ export default function BacktestPanel() {
 
   // 최초 로드 시 1회 기본 백테스트 실행
   useEffect(() => {
-    runBacktest();
-  }, []);
+    void runBacktest();
+  }, [runBacktest]);
 
   // 성과 지표 가공
   const metrics = result

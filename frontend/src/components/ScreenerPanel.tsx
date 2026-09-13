@@ -135,8 +135,8 @@ export default function ScreenerPanel() {
 
   // 최초 로드시 1회 자동 실행
   useEffect(() => {
-    runScreening();
-  }, [market]);
+    void runScreening();
+  }, [runScreening]);
 
   // CSV 다운로드
   const exportCSV = () => {
