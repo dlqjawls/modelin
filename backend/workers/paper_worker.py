@@ -20,6 +20,7 @@ from core.scheduler import PaperScheduler
 from core.execution_journal import ExecutionJournal
 from core.risk_guard import RiskGuard
 from core.strategy_comparator import compare_strategies
+from application.paper_cycle import PaperCycleRequest, PaperCycleService
 
 logger = logging.getLogger("modelin.paper_worker")
 calendar = TradingCalendar()
@@ -178,6 +179,11 @@ async def execute_from_market_data(deployment: dict, *, data_adapter, broker, as
     return await execute_once(deployment, close_prices=close_prices,
                                prices=latest, broker=broker, account_snapshot=account,
                                journal=journal, schedule_key=schedule_key)
+
+
+def paper_cycle_service():
+    """Return the application boundary used by external worker entry points."""
+    return PaperCycleService(execute_from_market_data)
 
 
 async def serve(deployment_loader, interval_seconds: int = 60, execute=None, scheduler=None):

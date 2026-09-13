@@ -20,7 +20,8 @@ from adapters.market_data.official_sources import OpenDartClient, SecSubmissions
 from adapters.market_data.fred_macro import FredMacroContext
 from core.market_context import NewsEventEngine
 from core.market_context import MacroContext
-from workers.paper_worker import execute_from_market_data
+from workers.paper_worker import paper_cycle_service
+from application.paper_cycle import PaperCycleRequest
 from core.strategy_runtime import validate_strategy
 from core.execution_journal import ExecutionJournal
 from workers.paper_worker import recover_pending_submissions
@@ -57,6 +58,7 @@ async def run(deployment, interval_seconds, once=False, deployment_loader=None, 
             market=deployment["market"], exchange=deployment.get("exchange", "NASD")))
         data = ProviderMarketDataAdapter(KRXProvider(), "krx") if deployment["market"] == "krx" else ProviderMarketDataAdapter(USProvider(), "us")
     journal = ExecutionJournal(settings.PAPER_DB_PATH)
+    cycle_service = paper_cycle_service()
     recovery = await recover_pending_submissions(journal, broker)
     if recovery["unknown"]:
         logger.warning("unresolved execution intents remain pending: %s", recovery["unknown"])
@@ -106,9 +108,9 @@ async def run(deployment, interval_seconds, once=False, deployment_loader=None, 
                         for item in official_events)
                     context.update(official_news)
                     deployment = {**deployment, "strategy": {**deployment["strategy"], "context": context}}
-            result = await execute_from_market_data(
-                deployment, data_adapter=data, broker=broker,
-                as_of=datetime.now(timezone.utc), journal=journal,
+            result = await cycle_service.execute(
+                PaperCycleRequest(deployment, datetime.now(timezone.utc)),
+                data_adapter=data, broker=broker, journal=journal,
             )
             logger.info("paper cycle result=%s", result)
             if status_callback is not None:
