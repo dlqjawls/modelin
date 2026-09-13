@@ -2,10 +2,12 @@ import asyncio
 import unittest
 from datetime import datetime, timezone
 from decimal import Decimal
+from unittest.mock import AsyncMock, patch
 
 from application.market_snapshot import PaperMarketSnapshotService
 from application.paper_decision import PaperDecisionService
 from application.paper_execution import PaperExecutionService
+from workers.paper_worker import execute_from_market_data
 from data.contracts import Bar
 
 
@@ -48,6 +50,40 @@ class RecordingBroker:
 
 
 class ApplicationServiceTests(unittest.TestCase):
+    def test_market_data_cycle_passes_strategy_symbols_to_auto_selection(self):
+        class SnapshotService:
+            async def collect(self, deployment, *, data_adapter, as_of):
+                return type("Prepared", (), {
+                    "snapshot": object(),
+                    "usable_bars": (),
+                    "close_prices": "close-frame",
+                    "latest_prices": {"A": Decimal("10")},
+                    "schedule_key": "schedule-1",
+                })(), None
+
+        class DataAdapter:
+            def open_frame(self, snapshot):
+                return "open-frame"
+
+        class Broker:
+            async def account_snapshot(self):
+                return {"cash": "100", "positions": []}
+
+        deployment = {
+            "id": "d1", "account_id": "a1", "mode": "paper", "observed_state": "RUNNING",
+            "market": "krx", "strategy": {"symbols": ["A"], "auto_select": True, "candidates": [{"type": "equal_weight"}]},
+        }
+        with patch("workers.paper_worker.compare_strategies", return_value=[type("Rank", (), {"strategy": {"type": "equal_weight"}})()]) as compare:
+            with patch("workers.paper_worker.execute_once", new_callable=AsyncMock,
+                       return_value={"status": "no_change", "orders": []}):
+                result = asyncio.run(execute_from_market_data(
+                    deployment, data_adapter=DataAdapter(), broker=Broker(), as_of=datetime.now(timezone.utc),
+                    snapshot_service=SnapshotService(), decision_service=None, execution_service=None,
+                ))
+
+        self.assertEqual(result["status"], "no_change")
+        self.assertEqual(compare.call_args.kwargs["symbols"], ["A"])
+
     def test_market_snapshot_service_normalizes_latest_prices_and_schedule(self):
         first = datetime(2024, 1, 2, tzinfo=timezone.utc)
         second = datetime(2024, 1, 3, tzinfo=timezone.utc)

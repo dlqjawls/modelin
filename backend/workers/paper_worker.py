@@ -142,6 +142,7 @@ async def execute_from_market_data(deployment: dict, *, data_adapter, broker, as
     if early_result is not None:
         return early_result
     snapshot, usable, close_prices = prepared.snapshot, prepared.usable_bars, prepared.close_prices
+    symbols = deployment.get("strategy", {}).get("symbols", [])
     if deployment.get("strategy", {}).get("auto_select"):
         candidates = deployment["strategy"].get("candidates", [])
         if not candidates:
