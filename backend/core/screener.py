@@ -46,9 +46,6 @@ _OPS = {
 class ScreenerEngine:
     """팩터 기반 종목 스크리닝 엔진"""
 
-    def __init__(self):
-        pass
-
     def screen_records(
         self, records, conditions: list[ScreenerCondition],
         sort_by: str = "market_cap", sort_desc: bool = True, limit: int = 50,

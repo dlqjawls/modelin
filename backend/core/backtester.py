@@ -43,10 +43,6 @@ class BacktestResult:
 
 
 class BacktestEngine:
-    def __init__(self):
-        """Pure calculation engine; market data is supplied to ``run_frames``."""
-        pass
-
     def run_frames(self, config: BacktestConfig, opens: pd.DataFrame, closes: pd.DataFrame) -> BacktestResult:
         self._validate_config(config)
         if opens.empty or closes.empty:
