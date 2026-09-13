@@ -8,9 +8,7 @@ from core.strategy_comparator import compare_strategies
 class BacktestService:
     def __init__(self, market_data, engine=None):
         self.market_data = market_data
-        self.engine = engine or BacktestEngine({
-            market.value: provider for market, provider in market_data.providers.items()
-        })
+        self.engine = engine or BacktestEngine()
 
     async def run(self, *, symbols, market, start_date, end_date, strategy,
                   initial_capital, commission_rate, slippage_rate, rebalance_period):
@@ -20,7 +18,24 @@ class BacktestService:
             commission_rate=commission_rate, slippage_rate=slippage_rate,
             rebalance_period=rebalance_period,
         )
-        return await self.engine.run(config)
+        provider = self.market_data.provider(market)
+        frames = await self._load_frames(provider, symbols, start_date, end_date)
+        if not frames:
+            raise ValueError("사용 가능한 가격 데이터가 없습니다.")
+        opens = pd.DataFrame({s: f["open"] for s, f in frames.items()}).sort_index()
+        closes = pd.DataFrame({s: f["close"] for s, f in frames.items()}).sort_index()
+        return self.engine.run_frames(config, opens, closes)
+
+    @staticmethod
+    async def _load_frames(provider, symbols, start_date, end_date):
+        frames = {}
+        for symbol in dict.fromkeys(symbols):
+            frame = await provider.get_ohlcv(symbol, start_date, end_date, "1d")
+            if not frame.empty and {"open", "close"}.issubset(frame.columns):
+                frame = frame[["open", "high", "low", "close", "volume"]].copy()
+                frame.index = pd.to_datetime(frame.index, utc=True).tz_convert(None)
+                frames[symbol] = frame.sort_index()
+        return frames
 
     async def compare(self, *, market, symbols, start_date, end_date,
                       strategies=None, initial_capital=10_000_000):

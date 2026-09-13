@@ -41,23 +41,14 @@ class BacktestResult:
 
 
 class BacktestEngine:
-    def __init__(self, providers):
-        self._providers = providers
+    def __init__(self):
+        """Pure calculation engine; market data is supplied to ``run_frames``."""
+        pass
 
-    async def run(self, config: BacktestConfig) -> BacktestResult:
+    def run_frames(self, config: BacktestConfig, opens: pd.DataFrame, closes: pd.DataFrame) -> BacktestResult:
         self._validate_config(config)
-        provider = self._providers[config.market]
-        frames = {}
-        for symbol in dict.fromkeys(config.symbols):
-            frame = await provider.get_ohlcv(symbol, config.start_date, config.end_date, "1d")
-            if not frame.empty and {"open", "close"}.issubset(frame.columns):
-                frame = frame[["open", "high", "low", "close", "volume"]].copy()
-                frame.index = pd.to_datetime(frame.index, utc=True).tz_convert(None)
-                frames[symbol] = frame.sort_index()
-        if not frames:
+        if opens.empty or closes.empty:
             raise ValueError("사용 가능한 가격 데이터가 없습니다.")
-        opens = pd.DataFrame({s: f["open"] for s, f in frames.items()}).sort_index()
-        closes = pd.DataFrame({s: f["close"] for s, f in frames.items()}).sort_index()
         return self._event_backtest(opens, closes, self._generate_signals(closes, config.strategy), config)
 
     @staticmethod
