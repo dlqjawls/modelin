@@ -21,6 +21,7 @@ core          -> 외부 SDK·provider·API 라우터를 import하지 않음
 ```
 
 `core/contracts.py`는 정규화된 시장 데이터 계약을 소유한다. `data/contracts.py`는 기존 import를 위한 호환 모듈이며, 새 코드는 `core.contracts`를 사용한다.
+`core/strategy_signals.py`는 백테스트와 paper runtime이 공유하는 순수 신호 계산을 소유한다. 전략 runtime은 백테스트 엔진을 생성하거나 private 메서드를 호출하지 않는다.
 `ports/market_data.py`와 `ports/research_provider.py`는 시장 데이터 수집·연구 provider 계약을 소유하며, 구체 provider는 `data/providers/`에 구현한다.
 `data/persistence/`는 SQLite·PostgreSQL 저장소 구현을 소유하며, `core`는 저장소 기술을 직접 import하지 않는다.
 Paper 브로커 구현(`in_memory_paper.py`, `paper.py`)도 `adapters/brokers/`에 두며, `core`에는 주문 규칙과 상태 모델만 둔다.
