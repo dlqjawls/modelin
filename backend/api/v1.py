@@ -10,11 +10,10 @@ from uuid import uuid4
 from fastapi import APIRouter, Depends, Header, HTTPException
 from pydantic import BaseModel, Field
 from config import settings
-from core.operations_store import OperationsStore
 from core.persistent_paper_broker import PersistentPaperBroker, account_database_path
 from core.strategy_runtime import validate_strategy
-from application.deployment_service import DeploymentConflict, DeploymentService
-from adapters.brokers.registry import BrokerRegistry
+from application.deployment_service import DeploymentConflict
+from application.container import get_container
 from adapters.brokers.kis import KISBrokerAdapter, KISConfig
 from adapters.market_data.fred_macro import FredMacroContext
 
@@ -25,9 +24,10 @@ async def require_api_key(x_modelin_key: str | None = Header(default=None, alias
 
 
 router = APIRouter(prefix="/api/v1", tags=["Operations"], dependencies=[Depends(require_api_key)])
-_store = OperationsStore(settings.PAPER_DB_PATH)
-_brokers = BrokerRegistry()
-_deployments = DeploymentService(_store)
+_container = get_container()
+_store = _container.operations_store
+_brokers = _container.broker_registry
+_deployments = _container.deployment_service
 
 
 class PaperAccountRequest(BaseModel):

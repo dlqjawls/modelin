@@ -18,7 +18,7 @@ from api.portfolio import router as portfolio_router
 from api.trading import router as trading_router
 from api.v1 import router as operations_router
 from workers.run_paper import load_deployment, run as run_paper_worker
-from core.operations_store import OperationsStore
+from application.container import get_container
 
 
 @asynccontextmanager
@@ -30,7 +30,7 @@ async def lifespan(app: FastAPI):
         if not deployment_path.exists():
             deployment_path = Path(__file__).resolve().parent.parent / settings.PAPER_DEPLOYMENT_FILE
         deployment = load_deployment(str(deployment_path))
-        operations = OperationsStore(settings.PAPER_DB_PATH)
+        operations = get_container().operations_store
 
         async def current_deployment():
             stored = operations.deployment(deployment["id"])
