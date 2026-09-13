@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useState } from 'react';
 import { RefreshCw, Settings } from 'lucide-react';
-import { healthCheck, operationsApi } from '../services/api';
+import { healthCheck, operationsApi, type DiagnosticsResponse, type HealthResponse, type LiveDiagnosticsResponse } from '../services/api';
 
 export default function SettingsPanel() {
-  const [health, setHealth] = useState<Record<string, string> | null>(null);
-  const [diagnostics, setDiagnostics] = useState<Record<string, any> | null>(null);
-  const [live, setLive] = useState<Record<string, any> | null>(null);
+  const [health, setHealth] = useState<HealthResponse | null>(null);
+  const [diagnostics, setDiagnostics] = useState<DiagnosticsResponse | null>(null);
+  const [live, setLive] = useState<LiveDiagnosticsResponse | null>(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const refresh = useCallback(async () => {
@@ -27,7 +27,7 @@ export default function SettingsPanel() {
     <div className="dashboard-grid">
       <section className="card"><div className="card-header"><span className="card-title">서버 상태</span><Settings size={18} color="var(--accent-blue)" /></div><div className="metric-row"><span>API</span><strong>{health?.status ?? '확인 중'}</strong></div><div className="metric-row"><span>Paper worker</span><strong>{health?.paper_worker ?? '-'}</strong></div></section>
       <section className="card"><div className="card-header"><span className="card-title">데이터·브로커 연결</span></div>{Object.entries(diagnostics?.sources ?? {}).map(([name, state]) => <div className="metric-row" key={name}><span>{name}</span><strong>{String(state)}</strong></div>)}<div className="metric-row"><span>실거래</span><strong>{diagnostics?.live_trading ?? '-'}</strong></div><div className="metric-row"><span>코인 매매</span><strong>{diagnostics?.crypto_trading ?? '-'}</strong></div></section>
-      <section className="card"><div className="card-header"><span className="card-title">실시간 조회 결과</span></div>{live ? Object.entries(live).map(([name, value]) => <div className="metric-row" key={name}><span>{name}</span><strong>{String((value as Record<string, unknown>).status ?? '-')}</strong></div>) : <p style={{ color: 'var(--text-tertiary)' }}>버튼을 눌러 읽기 전용 연결을 확인하세요.</p>}</section>
+      <section className="card"><div className="card-header"><span className="card-title">실시간 조회 결과</span></div>{live ? Object.entries(live).map(([name, value]) => <div className="metric-row" key={name}><span>{name}</span><strong>{value.status}</strong></div>) : <p style={{ color: 'var(--text-tertiary)' }}>버튼을 눌러 읽기 전용 연결을 확인하세요.</p>}</section>
     </div>
   </div>;
 }

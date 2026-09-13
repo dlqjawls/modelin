@@ -166,7 +166,7 @@ export const portfolioApi = {
 
 // === Health Check ===
 
-export const healthCheck = () => api.get('/api/health');
+export const healthCheck = () => api.get<HealthResponse>('/api/health');
 
 export interface PaperAccount {
   id: string;
@@ -176,6 +176,40 @@ export interface PaperAccount {
   currency: string;
   initial_cash: string;
   status: string;
+}
+
+export interface HealthResponse {
+  status: string;
+  paper_worker?: string;
+}
+
+export interface DiagnosticsResponse {
+  paper_worker: string;
+  sources: Record<string, string>;
+  live_trading: string;
+  crypto_trading: string;
+}
+
+export interface LiveDiagnostic {
+  status: string;
+  source?: string;
+  failures?: number;
+  error?: string;
+}
+
+export type LiveDiagnosticsResponse = Record<string, LiveDiagnostic>;
+
+export interface AccountSnapshot {
+  cash: string;
+  positions: Array<Record<string, string | number>>;
+  orders: Array<Record<string, unknown>>;
+  events: Array<Record<string, unknown>>;
+  [key: string]: unknown;
+}
+
+export interface AccountSnapshotResponse {
+  account: PaperAccount;
+  snapshot: AccountSnapshot;
 }
 
 export interface Deployment {
@@ -195,12 +229,12 @@ export const operationsApi = {
   deployments: () => api.get<Deployment[]>('/api/v1/deployments'),
   createPaperAccount: (body: { name: string; market: string; currency: string; initial_cash: string }) =>
     api.post<PaperAccount>('/api/v1/accounts/paper', body),
-  snapshot: (accountId: string) => api.get(`/api/v1/accounts/${accountId}/snapshot`),
+  snapshot: (accountId: string) => api.get<AccountSnapshotResponse>(`/api/v1/accounts/${accountId}/snapshot`),
   deployment: (id: string) => api.get<Deployment>(`/api/v1/deployments/${id}`),
   command: (id: string, type: 'START' | 'PAUSE' | 'CANCEL_OPEN' | 'LIQUIDATE' | 'RESUME' | 'ARCHIVE') =>
-    api.post(`/api/v1/deployments/${id}/commands`, { type, reason: `UI:${type}` }),
-  diagnostics: () => api.get('/api/v1/diagnostics'),
-  liveDiagnostics: () => api.get('/api/v1/diagnostics/live'),
+    api.post<Deployment>(`/api/v1/deployments/${id}/commands`, { type, reason: `UI:${type}` }),
+  diagnostics: () => api.get<DiagnosticsResponse>('/api/v1/diagnostics'),
+  liveDiagnostics: () => api.get<LiveDiagnosticsResponse>('/api/v1/diagnostics/live'),
 };
 
 export default api;

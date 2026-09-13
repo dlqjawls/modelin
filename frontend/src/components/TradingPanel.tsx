@@ -1,16 +1,16 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Activity, RefreshCw } from 'lucide-react';
-import { healthCheck, operationsApi, type PaperAccount } from '../services/api';
+import { healthCheck, operationsApi, type DiagnosticsResponse, type PaperAccount, type AccountSnapshotResponse, type Deployment } from '../services/api';
 
 export default function TradingPanel() {
   const [accounts, setAccounts] = useState<PaperAccount[]>([]);
   const [selected, setSelected] = useState<PaperAccount | null>(null);
-  const [snapshot, setSnapshot] = useState<any>(null);
+  const [snapshot, setSnapshot] = useState<AccountSnapshotResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [workerState, setWorkerState] = useState('unknown');
-  const [diagnostics, setDiagnostics] = useState<Record<string, any> | null>(null);
-  const [deployments, setDeployments] = useState<any[]>([]);
+  const [diagnostics, setDiagnostics] = useState<DiagnosticsResponse | null>(null);
+  const [deployments, setDeployments] = useState<Deployment[]>([]);
 
   const refresh = useCallback(async () => {
     setLoading(true); setError(null);
