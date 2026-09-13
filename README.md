@@ -77,6 +77,8 @@ modelin/
 
 연결 상태를 확인하려면 [운영 실행서](docs/runbook.md)의 읽기 전용 점검을 실행한다. 실제 주문 전에는 paper 계좌에서 사용자가 승인한 종목·수량으로 주문·취소 검증을 별도로 진행해야 한다.
 
+Windows 개발환경 점검은 `powershell -ExecutionPolicy Bypass -File scripts/check-dev-environment.ps1`로 실행한다. Python·Node.js 실행기와 `backend/.env` 존재 여부만 확인하며 비밀값은 출력하지 않는다.
+
 ## ⚠️ 주의사항
 
 - 이 프로그램은 투자 참고용이며, 투자 결정의 책임은 사용자에게 있습니다.
