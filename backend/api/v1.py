@@ -84,7 +84,7 @@ async def diagnostics():
         "paper_worker": "configured" if settings.PAPER_WORKER_ENABLED and settings.PAPER_DEPLOYMENT_FILE else "disabled",
         "sources": {
             "kis_paper": "configured" if all((settings.KIS_APP_KEY, settings.KIS_APP_SECRET, settings.KIS_ACCOUNT_NO)) else "missing_credentials",
-            "kis_overseas_paper": "not_implemented",
+            "kis_overseas_paper": "configured" if all((settings.KIS_APP_KEY, settings.KIS_APP_SECRET, settings.KIS_ACCOUNT_NO)) else "missing_credentials",
             "rss": "configured" if settings.NEWS_FEEDS else "not_configured",
             "opendart": "configured" if settings.OPENDART_API_KEY else "missing_api_key",
             "sec_edgar": "configured" if settings.SEC_USER_AGENT and settings.SEC_CIKS else "missing_user_agent_or_cik",

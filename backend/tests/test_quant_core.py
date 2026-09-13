@@ -87,7 +87,7 @@ class QuantCoreTests(unittest.TestCase):
         deployment = load_deployment("docs/examples/us-paper-runner.json")
         self.assertEqual(deployment["market"], "us")
 
-    def test_us_deployment_is_validated_but_not_executed_without_kis_overseas_adapter(self):
+    def test_us_deployment_is_validated_for_kis_overseas_execution(self):
         deployment = load_deployment("docs/examples/us-paper-runner.json")
         self.assertEqual(deployment.get("broker"), "local")
 
