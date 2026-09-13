@@ -8,7 +8,7 @@ from typing import Literal
 from fastapi import APIRouter, Depends, Header, HTTPException
 from pydantic import BaseModel, Field
 from config import settings
-from core.persistent_paper_broker import PersistentPaperBroker, account_database_path
+from core.persistent_paper_broker import account_database_path
 from core.strategy_runtime import validate_strategy
 from application.deployment_service import DeploymentConflict
 from application.operations_service import (
@@ -32,6 +32,7 @@ _accounts = _container.account_service
 _deployments = _container.deployment_service
 _operations = _container.operations_service
 _queries = _container.operations_queries
+_account_queries = _container.account_queries
 
 
 class PaperAccountRequest(BaseModel):
@@ -133,35 +134,35 @@ async def live_diagnostics():
 
 @router.get("/accounts/{account_id}/snapshot")
 async def account_snapshot(account_id: str):
-    account = _queries.account(account_id)
-    if not account:
-        raise HTTPException(404, "계좌를 찾을 수 없습니다.")
-    if account["mode"] != "paper":
-        raise HTTPException(503, "현재 live 계좌 스냅샷은 구현되지 않았습니다.")
-    broker = PersistentPaperBroker(account_database_path(settings.PAPER_DB_PATH, account_id), initial_cash=account["initial_cash"])
-    return {"account": account, "snapshot": broker.snapshot()}
+    try:
+        account, snapshot = _account_queries.snapshot(account_id)
+        return {"account": account, "snapshot": snapshot}
+    except LookupError as exc:
+        raise HTTPException(404, str(exc)) from exc
+    except RuntimeError as exc:
+        raise HTTPException(503, str(exc)) from exc
 
 
 @router.get("/accounts/{account_id}/orders")
 async def account_orders(account_id: str):
-    account = _queries.account(account_id)
-    if not account:
-        raise HTTPException(404, "계좌를 찾을 수 없습니다.")
-    if account["mode"] != "paper":
-        raise HTTPException(503, "현재 live 계좌 주문 조회는 구현되지 않았습니다.")
-    broker = PersistentPaperBroker(account_database_path(settings.PAPER_DB_PATH, account_id), initial_cash=account["initial_cash"])
-    return {"account_id": account_id, "orders": broker.snapshot()["orders"]}
+    try:
+        _account, orders = _account_queries.orders(account_id)
+        return {"account_id": account_id, "orders": orders}
+    except LookupError as exc:
+        raise HTTPException(404, str(exc)) from exc
+    except RuntimeError as exc:
+        raise HTTPException(503, str(exc)) from exc
 
 
 @router.get("/accounts/{account_id}/events")
 async def account_events(account_id: str):
-    account = _queries.account(account_id)
-    if not account:
-        raise HTTPException(404, "계좌를 찾을 수 없습니다.")
-    if account["mode"] != "paper":
-        raise HTTPException(503, "현재 live 계좌 이벤트 조회는 구현되지 않았습니다.")
-    broker = PersistentPaperBroker(account_database_path(settings.PAPER_DB_PATH, account_id), initial_cash=account["initial_cash"])
-    return {"account_id": account_id, "events": broker.snapshot()["events"]}
+    try:
+        _account, events = _account_queries.events(account_id)
+        return {"account_id": account_id, "events": events}
+    except LookupError as exc:
+        raise HTTPException(404, str(exc)) from exc
+    except RuntimeError as exc:
+        raise HTTPException(503, str(exc)) from exc
 
 
 @router.post("/deployments", status_code=201)

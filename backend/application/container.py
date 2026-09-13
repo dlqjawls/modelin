@@ -14,6 +14,7 @@ from application.deployment_service import DeploymentService
 from application.account_service import AccountService
 from application.operations_service import OperationsService
 from application.operations_query_service import OperationsQueryService
+from application.account_query_service import AccountQueryService
 
 
 @dataclass(frozen=True)
@@ -24,6 +25,7 @@ class ApplicationContainer:
     deployment_service: DeploymentService
     operations_service: OperationsService
     operations_queries: OperationsQueryService
+    account_queries: AccountQueryService
 
 
 @lru_cache(maxsize=1)
@@ -36,4 +38,5 @@ def get_container() -> ApplicationContainer:
         deployment_service=DeploymentService(store),
         operations_service=OperationsService(store),
         operations_queries=OperationsQueryService(store),
+        account_queries=AccountQueryService(store, settings.PAPER_DB_PATH),
     )
