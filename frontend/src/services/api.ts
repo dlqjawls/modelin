@@ -3,6 +3,8 @@
  * 백엔드 API 통신 모듈
  */
 import axios from 'axios';
+import type { AccountSnapshotResponse, Deployment, DiagnosticsResponse, HealthResponse, LiveDiagnosticsResponse, PaperAccount } from '../contracts/operations';
+export type { AccountSnapshotResponse, Deployment, DiagnosticsResponse, HealthResponse, LiveDiagnosticsResponse, PaperAccount } from '../contracts/operations';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
 
@@ -167,62 +169,6 @@ export const portfolioApi = {
 // === Health Check ===
 
 export const healthCheck = () => api.get<HealthResponse>('/api/health');
-
-export interface PaperAccount {
-  id: string;
-  name: string;
-  mode: 'paper';
-  market: string;
-  currency: string;
-  initial_cash: string;
-  status: string;
-}
-
-export interface HealthResponse {
-  status: string;
-  paper_worker?: string;
-}
-
-export interface DiagnosticsResponse {
-  paper_worker: string;
-  sources: Record<string, string>;
-  live_trading: string;
-  crypto_trading: string;
-}
-
-export interface LiveDiagnostic {
-  status: string;
-  source?: string;
-  failures?: number;
-  error?: string;
-}
-
-export type LiveDiagnosticsResponse = Record<string, LiveDiagnostic>;
-
-export interface AccountSnapshot {
-  cash: string;
-  positions: Array<Record<string, string | number>>;
-  orders: Array<Record<string, unknown>>;
-  events: Array<Record<string, unknown>>;
-  [key: string]: unknown;
-}
-
-export interface AccountSnapshotResponse {
-  account: PaperAccount;
-  snapshot: AccountSnapshot;
-}
-
-export interface Deployment {
-  id: string;
-  account_id: string;
-  mode: 'paper';
-  strategy: Record<string, unknown>;
-  desired_state: string;
-  observed_state: string;
-  revision: number;
-  pause_epoch: number;
-  last_error?: string | null;
-}
 
 export const operationsApi = {
   accounts: () => api.get<PaperAccount[]>('/api/v1/accounts'),
