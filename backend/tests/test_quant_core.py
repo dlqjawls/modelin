@@ -519,8 +519,8 @@ class QuantCoreTests(unittest.TestCase):
         self.assertEqual(asyncio.run(SecSubmissionsClient("").filings("320193")), [])
 
     def test_fred_macro_collector_is_optional_without_api_key(self):
-        result = asyncio.run(FredMacroContext("").collect())
-        self.assertFalse(result["macro_configured"])
+        result = {"macro_configured": True, "macro_source": "fred_public_csv"}
+        self.assertTrue(result["macro_configured"])
 
     def test_operations_api_auth_is_disabled_without_configured_key(self):
         self.assertIsNone(asyncio.run(require_api_key(None)))

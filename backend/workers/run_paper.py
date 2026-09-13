@@ -71,7 +71,7 @@ async def run(deployment, interval_seconds, once=False, deployment_loader=None, 
                 context.update(news_context)
                 strategy["context"] = context
                 deployment = {**deployment, "strategy": strategy}
-            if settings.FRED_API_KEY:
+            if settings.FRED_API_KEY or settings.PAPER_WORKER_ENABLED:
                 macro = await FredMacroContext(settings.FRED_API_KEY).collect()
                 strategy = dict(deployment.get("strategy", {}))
                 context = MacroContext.build(

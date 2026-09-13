@@ -94,7 +94,7 @@ async def diagnostics():
             "rss": "configured" if settings.NEWS_FEEDS else "not_configured",
             "opendart": "configured" if settings.OPENDART_API_KEY else "missing_api_key",
             "sec_edgar": "configured" if settings.SEC_USER_AGENT and settings.SEC_CIKS else "missing_user_agent_or_cik",
-            "fred_macro": "configured" if settings.FRED_API_KEY else "missing_api_key",
+            "fred_macro": "configured_public_csv" if not settings.FRED_API_KEY else "configured_api",
         },
         "live_trading": "disabled_by_default",
         "crypto_trading": "paused",
