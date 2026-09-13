@@ -7,6 +7,7 @@ from unittest.mock import AsyncMock, patch
 import pandas as pd
 
 from application.backtest_service import BacktestService
+from application.screener_service import ScreenerService
 from application.market_snapshot import PaperMarketSnapshotService
 from application.paper_decision import PaperDecisionService
 from application.paper_execution import PaperExecutionService
@@ -56,6 +57,47 @@ class RecordingBroker:
 
 
 class ApplicationServiceTests(unittest.TestCase):
+    def test_screener_service_collects_fundamentals_before_core_filtering(self):
+        class Market:
+            value = "krx"
+
+        class Ticker:
+            def __init__(self, symbol, market_cap):
+                self.symbol = symbol
+                self.name = symbol
+                self.market = Market()
+                self.sector = "test"
+                self.market_cap = market_cap
+
+        class Fundamental:
+            per = 10
+            pbr = 1
+            roe = 12
+            eps = 100
+            bps = 1000
+            dividend_yield = None
+            operating_margin = None
+
+        class Provider:
+            async def get_tickers(self):
+                return [Ticker("A", 100), Ticker("B", 200)]
+
+            async def get_fundamental(self, symbol):
+                result = Fundamental()
+                result.per = 10 if symbol == "A" else 30
+                return result
+
+        class MarketData:
+            def provider(self, market):
+                return Provider()
+
+        results = asyncio.run(ScreenerService(MarketData()).screen(
+            market="krx", conditions=[{"factor": "per", "operator": "<", "value": 20}],
+            sort_by="market_cap", sort_desc=True, limit=50,
+        ))
+
+        self.assertEqual([item.symbol for item in results], ["A"])
+
     def test_backtest_service_loads_data_before_calling_pure_engine(self):
         class Provider:
             async def get_ohlcv(self, symbol, start, end, interval):
