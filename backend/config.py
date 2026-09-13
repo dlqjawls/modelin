@@ -32,6 +32,7 @@ class Settings:
     OPENDART_API_KEY: str = os.getenv("OPENDART_API_KEY", "")
     SEC_USER_AGENT: str = os.getenv("SEC_USER_AGENT", "")
     SEC_CIKS: list[str] = [item for item in os.getenv("SEC_CIKS", "").split(",") if item]
+    FRED_API_KEY: str = os.getenv("FRED_API_KEY", "")
 
     # === Server ===
     HOST: str = os.getenv("HOST", "0.0.0.0")

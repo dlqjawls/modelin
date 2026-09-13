@@ -37,6 +37,7 @@ from core.strategy_comparator import compare_strategies
 from core.live_gate import LiveTradingGate
 from adapters.market_data.news_feed import RSSNewsContext
 from adapters.market_data.official_sources import OpenDartClient, SecSubmissionsClient
+from adapters.market_data.fred_macro import FredMacroContext
 from api.v1 import create_deployment, create_paper_account
 from tempfile import TemporaryDirectory
 
@@ -516,6 +517,10 @@ class QuantCoreTests(unittest.TestCase):
     def test_official_sources_fail_closed_without_credentials(self):
         self.assertEqual(asyncio.run(OpenDartClient("").filings(corp_code="001")), [])
         self.assertEqual(asyncio.run(SecSubmissionsClient("").filings("320193")), [])
+
+    def test_fred_macro_collector_is_optional_without_api_key(self):
+        result = asyncio.run(FredMacroContext("").collect())
+        self.assertFalse(result["macro_configured"])
 
     def test_deployment_creation_executes_validation_and_persists(self):
         async def scenario():

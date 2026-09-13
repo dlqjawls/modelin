@@ -16,7 +16,9 @@ from data.providers.krx_provider import KRXProvider
 from data.providers.us_provider import USProvider
 from adapters.market_data.news_feed import RSSNewsContext
 from adapters.market_data.official_sources import OpenDartClient, SecSubmissionsClient
+from adapters.market_data.fred_macro import FredMacroContext
 from core.market_context import NewsEventEngine
+from core.market_context import MacroContext
 from workers.paper_worker import execute_from_market_data
 from core.strategy_runtime import validate_strategy
 from core.execution_journal import ExecutionJournal
@@ -67,6 +69,18 @@ async def run(deployment, interval_seconds, once=False, deployment_loader=None):
                 strategy = dict(deployment.get("strategy", {}))
                 context = dict(strategy.get("context", {}))
                 context.update(news_context)
+                strategy["context"] = context
+                deployment = {**deployment, "strategy": strategy}
+            if settings.FRED_API_KEY:
+                macro = await FredMacroContext(settings.FRED_API_KEY).collect()
+                strategy = dict(deployment.get("strategy", {}))
+                context = MacroContext.build(
+                    fx_change_20d=macro.get("fx_change_20d", 0.0),
+                    rate_change_20d=macro.get("rate_change_20d", 0.0),
+                    volatility=macro.get("vix_latest", 0.0) / 100.0,
+                    news=strategy.get("context", {}),
+                )
+                context.update(macro)
                 strategy["context"] = context
                 deployment = {**deployment, "strategy": strategy}
             if settings.OPENDART_API_KEY or settings.SEC_CIKS:
