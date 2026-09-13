@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { RefreshCw, Settings } from 'lucide-react';
-import { healthCheck, operationsApi, type DiagnosticsResponse, type HealthResponse, type LiveDiagnosticsResponse } from '../services/api';
+import { getApiErrorMessage, healthCheck, operationsApi, type DiagnosticsResponse, type HealthResponse, type LiveDiagnosticsResponse } from '../services/api';
 
 export default function SettingsPanel() {
   const [health, setHealth] = useState<HealthResponse | null>(null);
@@ -11,13 +11,13 @@ export default function SettingsPanel() {
   const refresh = useCallback(async () => {
     setLoading(true); setError('');
     try { const [healthResponse, diagnosticResponse] = await Promise.all([healthCheck(), operationsApi.diagnostics()]); setHealth(healthResponse.data); setDiagnostics(diagnosticResponse.data); }
-    catch (cause) { setError(cause instanceof Error ? cause.message : '진단 정보를 불러오지 못했습니다.'); }
+    catch (cause) { setError(getApiErrorMessage(cause, '진단 정보를 불러오지 못했습니다.')); }
     finally { setLoading(false); }
   }, []);
   const runLiveCheck = async () => {
     setLoading(true); setError('');
     try { const response = await operationsApi.liveDiagnostics(); setLive(response.data); }
-    catch (cause) { setError(cause instanceof Error ? cause.message : '실시간 진단에 실패했습니다.'); }
+    catch (cause) { setError(getApiErrorMessage(cause, '실시간 진단에 실패했습니다.')); }
     finally { setLoading(false); }
   };
   useEffect(() => { void refresh(); }, [refresh]);

@@ -2,7 +2,7 @@
  * Modelin - API 서비스
  * 백엔드 API 통신 모듈
  */
-import axios from 'axios';
+import axios, { AxiosError, type AxiosRequestConfig } from 'axios';
 import type { AccountSnapshotResponse, Deployment, DiagnosticsResponse, HealthResponse, LiveDiagnosticsResponse, PaperAccount } from '../contracts/operations';
 export type { AccountSnapshotResponse, Deployment, DiagnosticsResponse, HealthResponse, LiveDiagnosticsResponse, PaperAccount } from '../contracts/operations';
 
@@ -15,6 +15,18 @@ const api = axios.create({
     'Content-Type': 'application/json',
   },
 });
+
+export function getApiErrorMessage(error: unknown, fallback = 'API 요청에 실패했습니다.'): string {
+  if (axios.isCancel(error)) return '요청이 취소되었습니다.';
+  if (error instanceof AxiosError) {
+    const detail = error.response?.data?.detail;
+    if (typeof detail === 'string' && detail) return detail;
+    if (error.response?.status) return `API 요청 실패 (${error.response.status})`;
+    if (error.message) return error.message;
+  }
+  if (error instanceof Error && error.message) return error.message;
+  return fallback;
+}
 
 // === Types ===
 
@@ -175,7 +187,7 @@ export const operationsApi = {
   deployments: () => api.get<Deployment[]>('/api/v1/deployments'),
   createPaperAccount: (body: { name: string; market: string; currency: string; initial_cash: string }) =>
     api.post<PaperAccount>('/api/v1/accounts/paper', body),
-  snapshot: (accountId: string) => api.get<AccountSnapshotResponse>(`/api/v1/accounts/${accountId}/snapshot`),
+  snapshot: (accountId: string, config?: AxiosRequestConfig) => api.get<AccountSnapshotResponse>(`/api/v1/accounts/${accountId}/snapshot`, config),
   deployment: (id: string) => api.get<Deployment>(`/api/v1/deployments/${id}`),
   command: (id: string, type: 'START' | 'PAUSE' | 'CANCEL_OPEN' | 'LIQUIDATE' | 'RESUME' | 'ARCHIVE') =>
     api.post<Deployment>(`/api/v1/deployments/${id}/commands`, { type, reason: `UI:${type}` }),

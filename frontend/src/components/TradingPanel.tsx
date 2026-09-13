@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Activity, RefreshCw } from 'lucide-react';
-import { healthCheck, operationsApi, type DiagnosticsResponse, type PaperAccount, type AccountSnapshotResponse, type Deployment } from '../services/api';
+import { healthCheck, getApiErrorMessage, operationsApi, type DiagnosticsResponse, type PaperAccount, type AccountSnapshotResponse, type Deployment } from '../services/api';
 
 export default function TradingPanel() {
   const [accounts, setAccounts] = useState<PaperAccount[]>([]);
@@ -25,22 +25,29 @@ export default function TradingPanel() {
       setAccounts(response.data);
       setSelected((current) => current && response.data.find((item) => item.id === current.id) || response.data[0] || null);
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : '운영 상태를 불러오지 못했습니다.');
+      setError(getApiErrorMessage(cause, '운영 상태를 불러오지 못했습니다.'));
     } finally { setLoading(false); }
   }, []);
   const deployment = selected && deployments.find((item) => item.account_id === selected.id);
   const sendCommand = async (type: 'START' | 'PAUSE' | 'CANCEL_OPEN' | 'LIQUIDATE' | 'RESUME') => {
     if (!deployment) return;
     try { await operationsApi.command(deployment.id, type); await refresh(); }
-    catch (cause) { setError(cause instanceof Error ? cause.message : '운영 명령을 처리하지 못했습니다.'); }
+    catch (cause) { setError(getApiErrorMessage(cause, '운영 명령을 처리하지 못했습니다.')); }
   };
 
   useEffect(() => { void refresh(); }, [refresh]);
   useEffect(() => {
     if (!selected) { setSnapshot(null); return; }
-    void operationsApi.snapshot(selected.id)
-      .then((response) => setSnapshot(response.data))
-      .catch((cause) => setError(cause instanceof Error ? cause.message : '계좌 snapshot을 불러오지 못했습니다.'));
+    const controller = new AbortController();
+    const accountId = selected.id;
+    void operationsApi.snapshot(selected.id, { signal: controller.signal })
+      .then((response) => {
+        if (!controller.signal.aborted) setSnapshot(response.data);
+      })
+      .catch((cause) => {
+        if (!controller.signal.aborted) setError(getApiErrorMessage(cause, `${accountId} snapshot을 불러오지 못했습니다.`));
+      });
+    return () => controller.abort();
   }, [selected]);
 
   return <div className="page-content">
