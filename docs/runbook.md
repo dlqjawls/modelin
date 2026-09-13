@@ -40,6 +40,13 @@ $env:PYTHONPATH = (Join-Path (Get-Location) 'backend')
 py scripts/listen-kis-executions.py 005930
 ```
 
+paper 주문·취소 smoke test는 명시적 확인 문자열과 종목·수량을 지정해야만 실행된다. 접수 후 즉시 취소하고 주문·잔고 상태를 출력한다.
+
+```powershell
+$env:PYTHONPATH = (Join-Path (Get-Location) 'backend')
+py scripts/kis-paper-order-smoke.py --market krx --symbol 005930 --quantity 1 --confirm I_CONFIRM_KIS_PAPER_ORDER
+```
+
 ## 중지와 안전 규칙
 
 터미널에서 `Ctrl+C`로 서버와 worker를 함께 중지한다. 코인 deployment는 runner가 거절하고, live broker는 기본 등록되지 않는다. 시작 전에 `--once` 실행으로 시장 캘린더와 데이터 공급자를 먼저 확인할 수 있다.
