@@ -12,7 +12,18 @@
 
 ## 미국주식
 
-KIS 해외주식 주문 어댑터 구현 전까지 미국주식 worker는 안전을 위해 시작을 차단한다.
+KIS 해외주식 paper 어댑터를 사용한다. `docs/examples/us-paper-runner.json`의 종목과 거래소 설정을 확인한 뒤 국내주식과 같은 방식으로 실행한다.
+
+## 연결 상태 읽기 전용 점검
+
+아래 점검은 KIS 국내·미국 계좌 잔고 조회와 FRED 거시 데이터 조회만 수행한다. 주문·취소·청산 요청은 보내지 않는다.
+
+```powershell
+$env:PYTHONPATH = (Join-Path (Get-Location) 'backend')
+python scripts/verify-integrations.py
+```
+
+세 항목이 모두 `"status": "ok"`이면 현재 설정으로 읽기 연결이 확인된 것이다. KIS 자격증명이 없으면 해당 시장은 `missing_credentials`로 표시되며, FRED API 키가 없어도 공개 CSV 경로가 자동으로 사용된다.
 
 ## 중지와 안전 규칙
 
