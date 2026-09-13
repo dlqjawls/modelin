@@ -8,6 +8,7 @@ from functools import lru_cache
 
 from config import settings
 from adapters.brokers.registry import BrokerRegistry
+from adapters.brokers.kis import KISBrokerAdapter, KISConfig
 from adapters.market_data.fred_macro import FredMacroContext
 from adapters.market_data.news_feed import RSSNewsContext
 from adapters.market_data.official_sources import OpenDartClient, SecSubmissionsClient
@@ -49,6 +50,14 @@ class ApplicationContainer:
 def get_container() -> ApplicationContainer:
     store = OperationsStore(settings.PAPER_DB_PATH)
     registry = BrokerRegistry()
+    def broker_factory(market):
+        return KISBrokerAdapter(KISConfig(
+            app_key=settings.KIS_APP_KEY,
+            app_secret=settings.KIS_APP_SECRET,
+            account_no=settings.KIS_ACCOUNT_NO,
+            environment="paper",
+            market=market,
+        ))
     return ApplicationContainer(
         operations_store=store,
         broker_registry=registry,
@@ -68,5 +77,7 @@ def get_container() -> ApplicationContainer:
             dart_factory=OpenDartClient,
             sec_factory=SecSubmissionsClient,
         ),
-        system_queries=SystemQueryService(settings, store),
+        system_queries=SystemQueryService(
+            settings, store, broker_factory=broker_factory, macro_factory=FredMacroContext,
+        ),
     )

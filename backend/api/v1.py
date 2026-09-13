@@ -8,14 +8,11 @@ from typing import Literal
 from fastapi import APIRouter, Depends, Header, HTTPException
 from pydantic import BaseModel, Field
 from config import settings
-from core.strategy_runtime import validate_strategy
 from application.deployment_service import DeploymentConflict
 from application.operations_service import (
     DeploymentNotFound, DeploymentRevisionConflict, DeploymentStateConflict,
 )
 from application.container import get_container
-from adapters.brokers.kis import KISBrokerAdapter, KISConfig
-from adapters.market_data.fred_macro import FredMacroContext
 
 async def require_api_key(x_modelin_key: str | None = Header(default=None, alias="X-Modelin-Key")):
     """Optional protection for the operations API when deployed remotely."""
@@ -94,27 +91,7 @@ async def diagnostics():
 @router.get("/diagnostics/live")
 async def live_diagnostics():
     """Opt-in read-only provider checks; no order endpoint is called."""
-    result = {"kis_krx": {}, "kis_us": {}, "fred": {}}
-    credentials = (settings.KIS_APP_KEY, settings.KIS_APP_SECRET, settings.KIS_ACCOUNT_NO)
-    if not all(credentials):
-        result["kis_krx"] = result["kis_us"] = {"status": "missing_credentials"}
-    else:
-        for market, key in (("krx", "kis_krx"), ("us", "kis_us")):
-            try:
-                snapshot = await KISBrokerAdapter(KISConfig(
-                    app_key=settings.KIS_APP_KEY, app_secret=settings.KIS_APP_SECRET,
-                    account_no=settings.KIS_ACCOUNT_NO, environment="paper", market=market,
-                )).account_snapshot()
-                result[key] = {"status": "ok", "source": snapshot.get("source")}
-            except Exception as exc:  # noqa: BLE001 - safe provider status only
-                result[key] = {"status": "error", "error": type(exc).__name__}
-    try:
-        macro = await FredMacroContext(settings.FRED_API_KEY).collect(days=7)
-        result["fred"] = {"status": "ok" if macro.get("macro_data_available") else "error",
-                           "source": macro.get("macro_source"), "failures": macro.get("macro_failures")}
-    except Exception as exc:  # noqa: BLE001 - safe provider status only
-        result["fred"] = {"status": "error", "error": type(exc).__name__}
-    return result
+    return await _system_queries.live_diagnostics()
 
 
 @router.get("/accounts/{account_id}/snapshot")

@@ -46,3 +46,10 @@ def test_paper_context_service_does_not_construct_external_adapters():
 def test_runtime_composition_lives_outside_application_layer():
     assert not (BACKEND / "application" / "paper_runtime.py").exists()
     assert (BACKEND / "workers" / "paper_runtime.py").exists()
+
+
+def test_versioned_api_does_not_construct_external_adapters():
+    path = BACKEND / "api" / "v1.py"
+    violations = [(source, module) for source, module in _imports_under("api")
+                  if source == path and module in {"adapters", "data"}]
+    assert not violations, f"versioned API imports infrastructure adapters: {violations}"
