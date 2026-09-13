@@ -18,7 +18,7 @@
 
 ```powershell
 $env:PYTHONPATH="backend"
-python -m unittest discover -s backend/tests -v
+python -m pytest -q
 python -m compileall -q backend
 python scripts/check-architecture.py
 node scripts/check-frontend-architecture.mjs
