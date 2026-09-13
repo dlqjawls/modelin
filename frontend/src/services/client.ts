@@ -1,4 +1,5 @@
 import axios, { AxiosError } from 'axios';
+import type { HealthResponse } from '../contracts/operations';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
 
@@ -7,6 +8,8 @@ export const apiClient = axios.create({
   timeout: 30000,
   headers: { 'Content-Type': 'application/json' },
 });
+
+export const healthCheck = () => apiClient.get<HealthResponse>('/api/health');
 
 export function getApiErrorMessage(error: unknown, fallback = 'API 요청에 실패했습니다.'): string {
   if (axios.isCancel(error)) return '요청이 취소되었습니다.';

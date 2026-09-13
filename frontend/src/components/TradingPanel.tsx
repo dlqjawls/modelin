@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Activity, RefreshCw } from 'lucide-react';
-import { healthCheck } from '../services/api';
-import { getApiErrorMessage } from '../services/client';
+import { getApiErrorMessage, healthCheck } from '../services/client';
 import { operationsApi } from '../services/operations';
 import type { DiagnosticsResponse, PaperAccount, AccountSnapshotResponse, Deployment } from '../contracts/operations';
 

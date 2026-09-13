@@ -1,6 +1,5 @@
 /** Backward-compatible facade for the frontend API services. */
-import type { HealthResponse } from '../contracts/operations';
-import { apiClient } from './client';
+import { apiClient, healthCheck } from './client';
 
 export { getApiErrorMessage } from './client';
 export { operationsApi } from './operations';
@@ -11,5 +10,5 @@ export type {
 } from './research';
 export type { AccountSnapshotResponse, Deployment, DiagnosticsResponse, HealthResponse, LiveDiagnosticsResponse, PaperAccount } from '../contracts/operations';
 
-export const healthCheck = () => apiClient.get<HealthResponse>('/api/health');
+export { healthCheck };
 export { apiClient as default };
