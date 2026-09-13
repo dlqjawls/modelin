@@ -100,6 +100,14 @@ export interface BacktestResult {
   monthly_returns: { date: string; return: number }[];
 }
 
+export interface PortfolioOptimizationResult {
+  weights: Record<string, number>;
+  expected_return: number;
+  expected_volatility: number;
+  sharpe_ratio: number;
+  efficient_frontier: { expected_return: number; volatility: number }[] | null;
+}
+
 // === Market Data API ===
 
 export const marketApi = {
@@ -137,6 +145,11 @@ export const screenerApi = {
 export const backtestApi = {
   run: (config: BacktestConfig) =>
     api.post<BacktestResult>('/api/backtest/run', config),
+};
+
+export const portfolioApi = {
+  optimize: (body: { symbols: string[]; market: string; start_date: string; end_date: string; method: string }) =>
+    api.post<PortfolioOptimizationResult>('/api/portfolio/optimize', body),
 };
 
 // === Health Check ===
