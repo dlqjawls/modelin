@@ -99,8 +99,10 @@ async def execute_once(deployment: dict, *, close_prices: pd.DataFrame, prices: 
     positions = {f"{p['symbol']}": p for p in account_snapshot.get("positions", [])}
     planner = OrderPlanner(cash_buffer=deployment.get("cash_buffer", "0.10"),
                            max_asset_weight=deployment.get("max_asset_weight", "1"))
+    allocation = Decimal(str(deployment.get("allocation_amount", nav)))
+    planning_nav = min(nav, allocation)
     intents = planner.plan(cash=account_snapshot["cash"], target_weights=decision.target_weights,
-                           positions=positions, prices=prices)
+                           positions=positions, prices=prices, nav=planning_nav)
     if journal is not None:
         schedule_key = schedule_key or close_prices.index[-1].isoformat()
         existing_run = journal.has_run(deployment["id"], schedule_key)
@@ -152,12 +154,10 @@ async def execute_from_market_data(deployment: dict, *, data_adapter, broker, as
         selected["context"] = deployment["strategy"].get("context", {})
         selected["adaptive"] = deployment["strategy"].get("adaptive", False)
         deployment = {**deployment, "strategy": selected}
-    latest = {}
-    for bar in usable:
-        if bar.end == max(item.end for item in usable):
-            latest[bar.instrument_id] = bar.close
+    latest_end = max(item.end for item in usable)
+    latest = {bar.instrument_id: bar.close for bar in usable if bar.end == latest_end}
     account = await broker.account_snapshot()
-    schedule_key = max(item.end for item in usable).isoformat()
+    schedule_key = latest_end.isoformat()
     if deployment.get("observed_state") == "LIQUIDATING":
         liquidation_orders = []
         for position in account.get("positions", []):

@@ -93,7 +93,9 @@ class BacktestEngine:
                 raise ValueError("short_window은 long_window보다 작아야 합니다.")
             result = pd.DataFrame(0.0, index=prices.index, columns=prices.columns)
             for symbol in prices:
-                fast = prices[symbol].rolling(short, min_periods=long).mean()
+                # The fast average becomes valid after its own window. Requiring
+                # the slow window here makes the valid default (20/60) fail.
+                fast = prices[symbol].rolling(short, min_periods=short).mean()
                 slow = prices[symbol].rolling(long, min_periods=long).mean()
                 result[symbol] = (fast > slow).astype(float)
             return result

@@ -44,6 +44,29 @@ from tempfile import TemporaryDirectory
 
 
 class QuantCoreTests(unittest.TestCase):
+    def test_moving_average_defaults_have_valid_warmup(self):
+        prices = pd.DataFrame({"A": range(100, 180)}, index=pd.date_range("2024-01-01", periods=80))
+        signals = BacktestEngine()._generate_signals(prices, {"type": "moving_average"})
+        self.assertEqual(len(signals), 80)
+        self.assertFalse(signals.iloc[-1].isna().any())
+
+    def test_paper_execution_respects_deployment_allocation(self):
+        class CountingBroker:
+            def __init__(self): self.requests = []
+            async def submit(self, request):
+                self.requests.append(request)
+                return {"client_order_id": request.client_order_id, "status": "filled"}
+
+        broker = CountingBroker()
+        prices = pd.DataFrame({"A": [10, 10, 10]}, index=pd.date_range("2024-01-01", periods=3))
+        deployment = {"id": "d-allocation", "account_id": "a", "mode": "paper", "observed_state": "RUNNING",
+                      "allocation_amount": "100", "cash_buffer": "0",
+                      "strategy": {"type": "equal_weight", "symbols": ["A"]}}
+        result = asyncio.run(execute_once(deployment, close_prices=prices, prices={"A": Decimal("10")},
+                                          broker=broker, account_snapshot={"cash": "1000", "positions": []}))
+        self.assertEqual(result["status"], "executed")
+        self.assertEqual(broker.requests[0].quantity, Decimal("10"))
+
     def test_strategy_comparator_uses_same_sample_and_returns_ranked_scores(self):
         index = pd.date_range("2024-01-01", periods=80)
         closes = pd.DataFrame({"A": [100 + i for i in range(80)]}, index=index)
