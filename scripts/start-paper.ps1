@@ -7,7 +7,7 @@ param(
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
 $python = Join-Path $env:LOCALAPPDATA 'Programs\Python\Python312\python.exe'
-if (-not (Test-Path $python)) { $python = 'python' }
+if (-not (Test-Path $python)) { $python = 'py' }
 $env:PYTHONPATH = Join-Path $root 'backend'
 $env:PAPER_WORKER_ENABLED = 'true'
 $env:PAPER_WORKER_INTERVAL_SECONDS = [string]$IntervalSeconds

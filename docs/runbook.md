@@ -5,7 +5,7 @@
 `backend/.env`에 KIS paper 자격증명을 넣은 뒤 프로젝트 루트에서 실행한다.
 
 ```powershell
-.scripts\start-paper.ps1 -Market krx -IntervalSeconds 300
+scripts\start-paper.ps1 -Market krx -IntervalSeconds 300
 ```
 
 서버가 시작되면 `GET http://127.0.0.1:8000/api/health`에서 `paper_worker`가 `running`인지 확인한다.
@@ -20,7 +20,7 @@ KIS 해외주식 paper 어댑터를 사용한다. `docs/examples/us-paper-runner
 
 ```powershell
 $env:PYTHONPATH = (Join-Path (Get-Location) 'backend')
-python scripts/verify-integrations.py
+py scripts/verify-integrations.py
 ```
 
 개발 환경 의존성과 회귀 테스트는 다음으로 준비하고 실행한다.
