@@ -191,7 +191,7 @@ async def serve(deployment_loader, interval_seconds: int = 60, execute=None, sch
     is intentionally optional so a misconfigured process cannot place orders.
     The scheduler owns session checks and duplicate-run protection.
     """
-    scheduler = scheduler or PaperScheduler(calendar)
+    scheduler = scheduler or PaperScheduler()
     while True:
         deployment = await deployment_loader()
         try:

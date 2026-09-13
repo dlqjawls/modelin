@@ -8,6 +8,7 @@ from application.market_snapshot import PaperMarketSnapshotService
 from application.paper_decision import PaperDecisionService
 from application.paper_execution import PaperExecutionService
 from workers.paper_worker import execute_from_market_data
+from workers.paper_worker import serve
 from data.contracts import Bar
 
 
@@ -50,6 +51,19 @@ class RecordingBroker:
 
 
 class ApplicationServiceTests(unittest.TestCase):
+    def test_worker_serve_can_construct_default_scheduler(self):
+        async def scenario():
+            async def loader():
+                return {"id": "d1", "mode": "paper", "observed_state": "PAUSED"}
+
+            task = asyncio.create_task(serve(loader, interval_seconds=0, execute=lambda *_: None))
+            await asyncio.sleep(0)
+            task.cancel()
+            with self.assertRaises(asyncio.CancelledError):
+                await task
+
+        asyncio.run(scenario())
+
     def test_market_data_cycle_passes_strategy_symbols_to_auto_selection(self):
         class SnapshotService:
             async def collect(self, deployment, *, data_adapter, as_of):
