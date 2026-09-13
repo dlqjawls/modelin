@@ -32,6 +32,7 @@ _operations = _container.operations_service
 _queries = _container.operations_queries
 _account_queries = _container.account_queries
 _broker_queries = _container.broker_queries
+_idempotency = _container.idempotency
 
 
 class PaperAccountRequest(BaseModel):
@@ -59,16 +60,13 @@ class CommandRequest(BaseModel):
 async def create_paper_account(request: PaperAccountRequest, idempotency_key: str | None = Header(default=None, alias="Idempotency-Key")):
     endpoint = "POST:/accounts/paper"
     try:
-        prior = _store.idempotent_response(scope="anonymous", endpoint=endpoint,
-                                           key=idempotency_key,
-                                           payload=request.model_dump())
+        prior = _idempotency.lookup(endpoint, idempotency_key, request.model_dump())
     except ValueError as exc:
         raise HTTPException(409, str(exc)) from exc
     if prior:
         return prior["response"]
     result = _accounts.create_paper(request.model_dump())
-    _store.save_idempotent_response(scope="anonymous", endpoint=endpoint, key=idempotency_key,
-                                    payload=request.model_dump(), status_code=201, response=result)
+    _idempotency.save(endpoint, idempotency_key, request.model_dump(), status_code=201, response=result)
     return result
 
 
@@ -167,16 +165,14 @@ async def account_events(account_id: str):
 async def create_deployment(request: DeploymentRequest, idempotency_key: str | None = Header(default=None, alias="Idempotency-Key")):
     endpoint = "POST:/deployments"
     try:
-        prior = _store.idempotent_response(scope="anonymous", endpoint=endpoint,
-                                           key=idempotency_key, payload=request.model_dump())
+        prior = _idempotency.lookup(endpoint, idempotency_key, request.model_dump())
     except ValueError as exc:
         raise HTTPException(409, str(exc)) from exc
     if prior:
         return prior["response"]
     try:
         result = _deployments.create_paper(request.model_dump())
-        _store.save_idempotent_response(scope="anonymous", endpoint=endpoint, key=idempotency_key,
-                                        payload=request.model_dump(), status_code=201, response=result)
+        _idempotency.save(endpoint, idempotency_key, request.model_dump(), status_code=201, response=result)
         return result
     except LookupError as exc:
         raise HTTPException(404, str(exc)) from exc
@@ -204,8 +200,7 @@ async def command_deployment(deployment_id: str, request: CommandRequest, idempo
     endpoint = f"POST:/deployments/{deployment_id}/commands"
     payload = {"deployment_id": deployment_id, **request.model_dump()}
     try:
-        prior = _store.idempotent_response(scope="anonymous", endpoint=endpoint,
-                                           key=idempotency_key, payload=payload)
+        prior = _idempotency.lookup(endpoint, idempotency_key, payload)
     except ValueError as exc:
         raise HTTPException(409, str(exc)) from exc
     if prior:
@@ -216,8 +211,7 @@ async def command_deployment(deployment_id: str, request: CommandRequest, idempo
         raise HTTPException(404, str(exc)) from exc
     except (DeploymentRevisionConflict, DeploymentStateConflict) as exc:
         raise HTTPException(409, str(exc)) from exc
-    _store.save_idempotent_response(scope="anonymous", endpoint=endpoint, key=idempotency_key,
-                                    payload=payload, status_code=202, response=result)
+    _idempotency.save(endpoint, idempotency_key, payload, status_code=202, response=result)
     return result
 
 
