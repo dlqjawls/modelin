@@ -50,8 +50,8 @@ _OPS = {
 class ScreenerEngine:
     """팩터 기반 종목 스크리닝 엔진"""
 
-    def __init__(self):
-        self._providers = {
+    def __init__(self, providers=None):
+        self._providers = providers or {
             "krx": KRXProvider(),
             "us": USProvider(),
             "crypto": CryptoProvider(),

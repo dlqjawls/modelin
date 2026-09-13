@@ -34,6 +34,7 @@ from application.paper_trade_service import PaperTradeService
 from application.market_data_service import MarketDataService
 from application.backtest_service import BacktestService
 from application.portfolio_service import PortfolioService
+from application.screener_service import ScreenerService
 
 
 @dataclass(frozen=True)
@@ -56,6 +57,7 @@ class ApplicationContainer:
     market_data: MarketDataService
     backtests: BacktestService
     portfolio: PortfolioService
+    screener: ScreenerService
 
 
 @lru_cache(maxsize=1)
@@ -99,4 +101,5 @@ def get_container() -> ApplicationContainer:
         market_data=market_data,
         backtests=BacktestService(market_data),
         portfolio=PortfolioService(market_data),
+        screener=ScreenerService(market_data),
     )

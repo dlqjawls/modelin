@@ -4,11 +4,11 @@ Modelin - 종목 스크리닝 API 라우터
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
-from core.screener import ScreenerEngine, ScreenerCondition, ScreenerResult
+from application.container import get_container
 
 router = APIRouter(prefix="/api/screener", tags=["Screener"])
 
-_engine = ScreenerEngine()
+_screener = get_container().screener
 
 
 class ScreenerRequest(BaseModel):
@@ -31,18 +31,9 @@ class ScreenerResponse(BaseModel):
 async def run_screener(request: ScreenerRequest):
     """종목 스크리닝 실행"""
     try:
-        conditions = [
-            ScreenerCondition(
-                factor=c["factor"],
-                operator=c["operator"],
-                value=c["value"],
-            )
-            for c in request.conditions
-        ]
-
-        results = await _engine.screen(
+        results = await _screener.screen(
             market=request.market,
-            conditions=conditions,
+            conditions=request.conditions,
             sort_by=request.sort_by,
             sort_desc=request.sort_desc,
             limit=request.limit,

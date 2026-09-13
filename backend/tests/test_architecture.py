@@ -85,3 +85,11 @@ def test_portfolio_api_does_not_construct_providers_or_numeric_engine():
     violations = [(source, module) for source, module in imports
                   if source == path and module in {"data", "adapters", "numpy", "pandas"}]
     assert not violations, f"portfolio API constructs infrastructure: {violations}"
+
+
+def test_screener_api_does_not_construct_core_engine():
+    path = BACKEND / "api" / "screener.py"
+    imports = list(_imports_under("api"))
+    violations = [(source, module) for source, module in imports
+                  if source == path and module in {"core", "data", "adapters"}]
+    assert not violations, f"screener API constructs core engine: {violations}"
