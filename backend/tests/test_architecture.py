@@ -93,3 +93,14 @@ def test_screener_api_does_not_construct_core_engine():
     violations = [(source, module) for source, module in imports
                   if source == path and module in {"core", "data", "adapters"}]
     assert not violations, f"screener API constructs core engine: {violations}"
+
+
+def test_application_container_shares_market_data_service_with_research_services():
+    from application.container import get_container
+
+    container = get_container()
+    assert container.backtests.market_data is container.market_data
+    assert container.portfolio.market_data is container.market_data
+    assert container.screener.engine._providers["krx"] is container.market_data.providers[next(
+        market for market in container.market_data.providers if market.value == "krx"
+    )]
