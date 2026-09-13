@@ -13,6 +13,7 @@ from config import settings
 from core.operations_store import OperationsStore
 from core.persistent_paper_broker import PersistentPaperBroker, account_database_path
 from core.strategy_runtime import validate_strategy
+from application.deployment_service import DeploymentConflict, DeploymentService
 from adapters.brokers.registry import BrokerRegistry
 from adapters.brokers.kis import KISBrokerAdapter, KISConfig
 from adapters.market_data.fred_macro import FredMacroContext
@@ -26,6 +27,7 @@ async def require_api_key(x_modelin_key: str | None = Header(default=None, alias
 router = APIRouter(prefix="/api/v1", tags=["Operations"], dependencies=[Depends(require_api_key)])
 _store = OperationsStore(settings.PAPER_DB_PATH)
 _brokers = BrokerRegistry()
+_deployments = DeploymentService(_store)
 
 
 class PaperAccountRequest(BaseModel):
@@ -172,27 +174,17 @@ async def create_deployment(request: DeploymentRequest, idempotency_key: str | N
         raise HTTPException(409, str(exc)) from exc
     if prior:
         return prior["response"]
-    account = _store.account(request.account_id)
-    if not account:
-        raise HTTPException(404, "계좌를 찾을 수 없습니다.")
-    if request.mode != account["mode"]:
-        raise HTTPException(409, "계좌와 deployment 모드가 다릅니다.")
     try:
-        strategy = validate_strategy(request.strategy, request.strategy.get("symbols"))
-    except (AttributeError, TypeError, ValueError) as exc:
-        raise HTTPException(422, str(exc)) from exc
-    deployment_id = str(uuid4())
-    item = {"id": deployment_id, "account_id": request.account_id, "mode": "paper",
-            "strategy": strategy, "allocation_amount": request.allocation_amount,
-            "cash_buffer": request.cash_buffer, "desired_state": "DRAFT", "observed_state": "DRAFT",
-            "pause_epoch": 0, "revision": 1, "last_error": None}
-    try:
-        result = _store.create_deployment(item)
+        result = _deployments.create_paper(request.model_dump())
         _store.save_idempotent_response(scope="anonymous", endpoint=endpoint, key=idempotency_key,
                                         payload=request.model_dump(), status_code=201, response=result)
         return result
-    except ValueError as exc:
+    except LookupError as exc:
+        raise HTTPException(404, str(exc)) from exc
+    except DeploymentConflict as exc:
         raise HTTPException(409, str(exc)) from exc
+    except (AttributeError, TypeError, ValueError) as exc:
+        raise HTTPException(422, str(exc)) from exc
 
 
 @router.get("/deployments")
