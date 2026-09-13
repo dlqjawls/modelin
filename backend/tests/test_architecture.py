@@ -123,7 +123,7 @@ def test_api_layer_has_no_direct_domain_or_infrastructure_imports():
 
 
 def test_research_and_trading_apis_do_not_build_services_at_import_time():
-    for name in ("market_data.py", "backtest.py", "portfolio.py", "screener.py", "trading.py"):
+    for name in ("market_data.py", "backtest.py", "portfolio.py", "screener.py", "trading.py", "v1.py"):
         tree = ast.parse((BACKEND / "api" / name).read_text(encoding="utf-8"))
         module_calls = [
             node for node in tree.body

@@ -21,18 +21,6 @@ async def require_api_key(x_modelin_key: str | None = Header(default=None, alias
 
 
 router = APIRouter(prefix="/api/v1", tags=["Operations"], dependencies=[Depends(require_api_key)])
-_container = get_container()
-_store = _container.operations_store
-_accounts = _container.account_service
-_deployments = _container.deployment_service
-_operations = _container.operations_service
-_queries = _container.operations_queries
-_account_queries = _container.account_queries
-_broker_queries = _container.broker_queries
-_idempotency = _container.idempotency
-_system_queries = _container.system_queries
-
-
 class PaperAccountRequest(BaseModel):
     name: str = Field(min_length=1, max_length=100)
     market: Literal["krx", "us", "crypto"]
@@ -56,27 +44,29 @@ class CommandRequest(BaseModel):
 
 @router.post("/accounts/paper", status_code=201)
 async def create_paper_account(request: PaperAccountRequest, idempotency_key: str | None = Header(default=None, alias="Idempotency-Key")):
+    services = get_container()
     endpoint = "POST:/accounts/paper"
     try:
-        prior = _idempotency.lookup(endpoint, idempotency_key, request.model_dump())
+        prior = services.idempotency.lookup(endpoint, idempotency_key, request.model_dump())
     except ValueError as exc:
         raise HTTPException(409, str(exc)) from exc
     if prior:
         return prior["response"]
-    result = _accounts.create_paper(request.model_dump())
-    _idempotency.save(endpoint, idempotency_key, request.model_dump(), status_code=201, response=result)
+    result = services.account_service.create_paper(request.model_dump())
+    services.idempotency.save(endpoint, idempotency_key, request.model_dump(), status_code=201, response=result)
     return result
 
 
 @router.get("/accounts")
 async def list_accounts():
-    return _queries.accounts()
+    return get_container().operations_queries.accounts()
 
 
 @router.get("/capabilities")
 async def capabilities(account_id: str):
+    services = get_container()
     try:
-        account, capability_data = await _broker_queries.capabilities(account_id)
+        account, capability_data = await services.broker_queries.capabilities(account_id)
         return {"account_id": account_id, "mode": account["mode"], "capabilities": capability_data}
     except LookupError as exc:
         raise HTTPException(404, str(exc)) from exc
@@ -85,19 +75,20 @@ async def capabilities(account_id: str):
 @router.get("/diagnostics")
 async def diagnostics():
     """Safe readiness diagnostics; secret values are never returned."""
-    return _system_queries.diagnostics()
+    return get_container().system_queries.diagnostics()
 
 
 @router.get("/diagnostics/live")
 async def live_diagnostics():
     """Opt-in read-only provider checks; no order endpoint is called."""
-    return await _system_queries.live_diagnostics()
+    return await get_container().system_queries.live_diagnostics()
 
 
 @router.get("/accounts/{account_id}/snapshot")
 async def account_snapshot(account_id: str):
+    account_queries = get_container().account_queries
     try:
-        account, snapshot = _account_queries.snapshot(account_id)
+        account, snapshot = account_queries.snapshot(account_id)
         return {"account": account, "snapshot": snapshot}
     except LookupError as exc:
         raise HTTPException(404, str(exc)) from exc
@@ -107,8 +98,9 @@ async def account_snapshot(account_id: str):
 
 @router.get("/accounts/{account_id}/orders")
 async def account_orders(account_id: str):
+    account_queries = get_container().account_queries
     try:
-        _account, orders = _account_queries.orders(account_id)
+        _account, orders = account_queries.orders(account_id)
         return {"account_id": account_id, "orders": orders}
     except LookupError as exc:
         raise HTTPException(404, str(exc)) from exc
@@ -118,8 +110,9 @@ async def account_orders(account_id: str):
 
 @router.get("/accounts/{account_id}/events")
 async def account_events(account_id: str):
+    account_queries = get_container().account_queries
     try:
-        _account, events = _account_queries.events(account_id)
+        _account, events = account_queries.events(account_id)
         return {"account_id": account_id, "events": events}
     except LookupError as exc:
         raise HTTPException(404, str(exc)) from exc
@@ -129,16 +122,17 @@ async def account_events(account_id: str):
 
 @router.post("/deployments", status_code=201)
 async def create_deployment(request: DeploymentRequest, idempotency_key: str | None = Header(default=None, alias="Idempotency-Key")):
+    services = get_container()
     endpoint = "POST:/deployments"
     try:
-        prior = _idempotency.lookup(endpoint, idempotency_key, request.model_dump())
+        prior = services.idempotency.lookup(endpoint, idempotency_key, request.model_dump())
     except ValueError as exc:
         raise HTTPException(409, str(exc)) from exc
     if prior:
         return prior["response"]
     try:
-        result = _deployments.create_paper(request.model_dump())
-        _idempotency.save(endpoint, idempotency_key, request.model_dump(), status_code=201, response=result)
+        result = services.deployment_service.create_paper(request.model_dump())
+        services.idempotency.save(endpoint, idempotency_key, request.model_dump(), status_code=201, response=result)
         return result
     except LookupError as exc:
         raise HTTPException(404, str(exc)) from exc
@@ -150,12 +144,12 @@ async def create_deployment(request: DeploymentRequest, idempotency_key: str | N
 
 @router.get("/deployments")
 async def list_deployments():
-    return _queries.deployments()
+    return get_container().operations_queries.deployments()
 
 
 @router.get("/deployments/{deployment_id}")
 async def get_deployment(deployment_id: str):
-    item = _queries.deployment(deployment_id)
+    item = get_container().operations_queries.deployment(deployment_id)
     if not item:
         raise HTTPException(404, "deployment을 찾을 수 없습니다.")
     return item
@@ -163,21 +157,22 @@ async def get_deployment(deployment_id: str):
 
 @router.post("/deployments/{deployment_id}/commands", status_code=202)
 async def command_deployment(deployment_id: str, request: CommandRequest, idempotency_key: str | None = Header(default=None, alias="Idempotency-Key")):
+    services = get_container()
     endpoint = f"POST:/deployments/{deployment_id}/commands"
     payload = {"deployment_id": deployment_id, **request.model_dump()}
     try:
-        prior = _idempotency.lookup(endpoint, idempotency_key, payload)
+        prior = services.idempotency.lookup(endpoint, idempotency_key, payload)
     except ValueError as exc:
         raise HTTPException(409, str(exc)) from exc
     if prior:
         return prior["response"]
     try:
-        result = _operations.command(deployment_id, request.type, request.expected_revision)
+        result = services.operations_service.command(deployment_id, request.type, request.expected_revision)
     except DeploymentNotFound as exc:
         raise HTTPException(404, str(exc)) from exc
     except (DeploymentRevisionConflict, DeploymentStateConflict) as exc:
         raise HTTPException(409, str(exc)) from exc
-    _idempotency.save(endpoint, idempotency_key, payload, status_code=202, response=result)
+    services.idempotency.save(endpoint, idempotency_key, payload, status_code=202, response=result)
     return result
 
 
@@ -189,6 +184,6 @@ async def live_health():
 @router.get("/health/ready")
 async def ready_health():
     try:
-        return _system_queries.ready()
+        return get_container().system_queries.ready()
     except Exception as exc:
         raise HTTPException(503, "저장소가 준비되지 않았습니다.") from exc
