@@ -19,4 +19,4 @@ adapters      -> ports + core data contracts
 core          -> 외부 SDK·provider·API 라우터를 import하지 않음
 ```
 
-`application/container.py`는 외부 구현을 연결하는 유일한 composition root다. 하나의 `MarketDataService` 인스턴스를 백테스트·포트폴리오·스크리너가 공유해 provider 수명주기와 설정을 일관되게 유지한다. `BacktestEngine`과 `ScreenerEngine`은 provider mapping을 생성자에서 주입받고 순수 계산·변환 책임만 가진다. 테스트에서는 provider factory와 broker/data adapter를 가짜 구현으로 주입할 수 있다. 실행 프로세스의 runtime 조립은 `workers/paper_runtime.py`에 두어 유스케이스 계층이 KIS SDK나 provider 생성 방식에 의존하지 않도록 한다.
+`application/container.py`는 외부 구현을 연결하는 유일한 composition root다. 하나의 `MarketDataService` 인스턴스를 백테스트·포트폴리오·스크리너가 공유해 provider 수명주기와 설정을 일관되게 유지한다. `BacktestEngine`은 가격 프레임을, `ScreenerEngine`은 수집된 ticker/fundamental record를 입력으로 받아 순수 계산·변환·필터링만 수행한다. 시장 데이터 수집과 동시성·실패 처리는 application service가 담당한다. 테스트에서는 provider factory와 broker/data adapter를 가짜 구현으로 주입할 수 있다. 실행 프로세스의 runtime 조립은 `workers/paper_runtime.py`에 두어 유스케이스 계층이 KIS SDK나 provider 생성 방식에 의존하지 않도록 한다.
