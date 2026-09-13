@@ -43,7 +43,7 @@ def load_deployment(path):
     return deployment
 
 
-async def run(deployment, interval_seconds, once=False, deployment_loader=None):
+async def run(deployment, interval_seconds, once=False, deployment_loader=None, status_callback=None):
     if deployment["market"] in {"krx", "us"}:
         broker = KISBrokerAdapter(KISConfig(
             app_key=settings.KIS_APP_KEY, app_secret=settings.KIS_APP_SECRET,
@@ -105,8 +105,12 @@ async def run(deployment, interval_seconds, once=False, deployment_loader=None):
                 as_of=datetime.now(timezone.utc), journal=journal,
             )
             logger.info("paper cycle result=%s", result)
-        except Exception:
+            if status_callback is not None:
+                status_callback(deployment, None)
+        except Exception as exc:
             logger.exception("paper cycle failed; no retry order is submitted")
+            if status_callback is not None:
+                status_callback(deployment, str(exc))
         if once:
             return
         await asyncio.sleep(interval_seconds)

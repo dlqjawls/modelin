@@ -44,9 +44,15 @@ async def lifespan(app: FastAPI):
                 "initial_cash": account.get("initial_cash", deployment.get("initial_cash", "10000000")),
             }
 
+        def record_worker_status(item, error):
+            stored = operations.deployment(item["id"])
+            if stored:
+                stored["last_error"] = error
+                operations.update_deployment(stored)
+
         worker_task = asyncio.create_task(run_paper_worker(
             deployment, max(60, settings.PAPER_WORKER_INTERVAL_SECONDS),
-            deployment_loader=current_deployment))
+            deployment_loader=current_deployment, status_callback=record_worker_status))
         app.state.paper_worker = "running"
         print(f"[Modelin] paper worker started: {deployment['id']}")
     else:

@@ -162,6 +162,7 @@ export interface Deployment {
   observed_state: string;
   revision: number;
   pause_epoch: number;
+  last_error?: string | null;
 }
 
 export const operationsApi = {

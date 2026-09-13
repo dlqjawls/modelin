@@ -65,6 +65,7 @@ export default function TradingPanel() {
           <div className="metric-row"><span>보유 종목</span><strong>{snapshot?.snapshot?.positions?.length ?? 0}</strong></div>
           <div className="metric-row"><span>주문 이벤트</span><strong>{snapshot?.snapshot?.events?.length ?? 0}</strong></div>
           {deployment && <><div className="metric-row"><span>전략 상태</span><strong>{deployment.observed_state}</strong></div>
+            {deployment.last_error && <div className="alert alert-error" style={{ marginTop: 12 }}>{deployment.last_error}</div>}
             <div className="button-row" style={{ marginTop: 16, gap: 8 }}>
               {deployment.observed_state === 'RUNNING' ? <button className="btn btn-secondary" onClick={() => void sendCommand('PAUSE')}>일시정지</button> : <button className="btn btn-primary" onClick={() => void sendCommand('RESUME')}>재개</button>}
               <button className="btn btn-secondary" onClick={() => void sendCommand('CANCEL_OPEN')}>신규 주문 중단</button>
