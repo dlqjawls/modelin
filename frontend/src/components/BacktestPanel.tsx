@@ -22,6 +22,7 @@ import {
   backtestApi,
   type BacktestConfig,
   type BacktestResult,
+  type StrategyScore,
 } from '../services/api';
 
 const STRATEGIES = [
@@ -44,6 +45,8 @@ export default function BacktestPanel() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<BacktestResult | null>(null);
+  const [comparison, setComparison] = useState<StrategyScore[]>([]);
+  const [comparing, setComparing] = useState(false);
 
   // 백엔드 백테스팅 실행
   const runBacktest = useCallback(async () => {
@@ -83,6 +86,19 @@ export default function BacktestPanel() {
       setLoading(false);
     }
   }, [symbols, market, startDate, endDate, strategy, capital]);
+
+  const compareStrategies = useCallback(async () => {
+    const symbolList = symbols.split(',').map((s) => s.trim()).filter(Boolean);
+    if (!symbolList.length) { setError('종목 코드를 1개 이상 입력해주세요.'); return; }
+    setComparing(true); setError(null);
+    try {
+      const response = await backtestApi.compare({ symbols: symbolList, market, start_date: startDate, end_date: endDate, initial_capital: parseFloat(capital) || 10_000_000 });
+      setComparison(response.data);
+    } catch (err: unknown) {
+      setComparison([]);
+      setError(`전략 비교 실패: ${err instanceof Error ? err.message : '알 수 없는 오류'}`);
+    } finally { setComparing(false); }
+  }, [symbols, market, startDate, endDate, capital]);
 
   // 최초 로드 시 1회 기본 백테스트 실행
   useEffect(() => {
@@ -256,6 +272,9 @@ export default function BacktestPanel() {
                   </>
                 )}
               </button>
+              <button className="btn btn-secondary" onClick={compareStrategies} disabled={comparing}>
+                {comparing ? '비교 중...' : '전략 비교'}
+              </button>
             </div>
           </div>
         </div>
@@ -277,6 +296,13 @@ export default function BacktestPanel() {
         >
           <AlertCircle size={18} />
           <span style={{ fontSize: '0.85rem' }}>{error}</span>
+        </div>
+      )}
+
+      {comparison.length > 0 && (
+        <div className="card" style={{ marginBottom: 'var(--space-md)' }}>
+          <div className="card-header"><span className="card-title">검증 구간 전략 순위</span><span style={{ color: 'var(--text-tertiary)', fontSize: '0.8rem' }}>최고 전략을 자동 적용하지 않음</span></div>
+          <div style={{ overflowX: 'auto' }}><table className="data-table"><thead><tr><th>순위</th><th>전략</th><th>CAGR</th><th>샤프</th><th>최대낙폭</th><th>거래 수</th></tr></thead><tbody>{comparison.map((item, index) => <tr key={`${JSON.stringify(item.strategy)}-${index}`}><td>{index + 1}</td><td>{String(item.strategy.type || 'unknown')}</td><td>{(item.cagr * 100).toFixed(2)}%</td><td>{item.sharpe_ratio.toFixed(2)}</td><td>{(item.max_drawdown * 100).toFixed(2)}%</td><td>{item.total_trades}</td></tr>)}</tbody></table></div>
         </div>
       )}
 
