@@ -8,6 +8,7 @@ import asyncio
 import json
 import logging
 from datetime import datetime, timezone
+from pathlib import Path
 
 from adapters.brokers.kis import KISBrokerAdapter, KISConfig
 from adapters.market_data.provider_adapter import ProviderMarketDataAdapter
@@ -28,7 +29,12 @@ logger = logging.getLogger("modelin.paper-runner")
 
 
 def load_deployment(path):
-    with open(path, encoding="utf-8") as stream:
+    deployment_path = Path(path)
+    if not deployment_path.is_absolute():
+        repo_root = Path(__file__).resolve().parents[2]
+        candidates = (Path.cwd() / deployment_path, repo_root / deployment_path)
+        deployment_path = next((candidate for candidate in candidates if candidate.is_file()), candidates[-1])
+    with deployment_path.open(encoding="utf-8") as stream:
         deployment = json.load(stream)
     if deployment.get("mode") != "paper" or deployment.get("market") not in {"krx", "us"}:
         raise ValueError("paper runner는 KRX 또는 US paper deployment만 허용합니다.")
