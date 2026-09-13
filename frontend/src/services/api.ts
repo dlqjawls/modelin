@@ -200,6 +200,7 @@ export const operationsApi = {
   command: (id: string, type: 'START' | 'PAUSE' | 'CANCEL_OPEN' | 'LIQUIDATE' | 'RESUME' | 'ARCHIVE') =>
     api.post(`/api/v1/deployments/${id}/commands`, { type, reason: `UI:${type}` }),
   diagnostics: () => api.get('/api/v1/diagnostics'),
+  liveDiagnostics: () => api.get('/api/v1/diagnostics/live'),
 };
 
 export default api;
