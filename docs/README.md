@@ -8,7 +8,7 @@
 4. [구현 작업과 검증 기준](trading-implementation-plan.md): 구현 순서와 계산·장애 수용 테스트.
 5. [모의 운용 설정 예시](examples/paper-deployment.json): 계약 설명용 가상 계좌 설정.
 
-현재 구현 범위: 백테스트 체결 시점 교정, 공통 전략 validator/runtime, SQLite Paper 원장, 주문 상태·outbox·복구 journal, 계좌 lease/fencing, 위험 한도, v1 운영 API, 시장 데이터 표준화, React Paper 운영 화면, fail-closed broker port, 그리고 application 계층의 계좌·deployment·paper cycle·조회·context·research 서비스. 외부 provider는 `application/container.py`에서 주입하고, paper runtime은 `workers/paper_runtime.py`에서 조립한다. frontend API는 `services/client.ts`, `services/operations.ts`, `services/research.ts`로 분리되며 화면은 `App.tsx`에서 lazy loading한다.
+현재 구현 범위: 백테스트 체결 시점 교정, 공통 전략 validator/runtime, SQLite Paper 원장, 주문 상태·outbox·복구 journal, 계좌 lease/fencing, 위험 한도, v1 운영 API, 시장 데이터 표준화, React Paper 운영 화면, fail-closed broker port, 그리고 application 계층의 계좌·deployment·paper cycle·조회·context·research 서비스. 영속성 구현은 `data/persistence/`, 시장 데이터 계약은 `core/contracts.py`, 외부 provider 조립은 `application/container.py`, paper runtime 조립은 `workers/paper_runtime.py`에 둔다. frontend API 호출과 계약은 각각 `services/`와 `contracts/`로 분리되며 화면은 `App.tsx`에서 lazy loading한다.
 
 ## 구조 규칙
 

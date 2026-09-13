@@ -4,9 +4,10 @@ The frontend keeps HTTP concerns in `src/services` and page rendering in `src/co
 
 - `services/client.ts`: shared Axios client, health check, and API error normalization.
 - `services/operations.ts`: account, deployment, snapshot, command, and diagnostics APIs.
-- `services/research.ts`: market data, screener, backtest, and portfolio APIs with their response types.
+- `services/research.ts`: market data, screener, backtest, and portfolio API calls.
 - `services/api.ts`: backward-compatible facade for consumers that still use the old import path.
 - `contracts/operations.ts`: shared operations response contracts.
+- `contracts/research.ts`: shared market, screener, backtest, and portfolio response contracts.
 - `hooks/i18n-context.ts`: translation data and context definition.
 - `hooks/I18nContext.tsx`: provider component.
 - `hooks/useI18n.ts`: context access hook.
