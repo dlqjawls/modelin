@@ -103,7 +103,7 @@ def get_container() -> ApplicationContainer:
         system_queries=SystemQueryService(
             settings, store, broker_factory=broker_factory, macro_factory=FredMacroContext,
         ),
-        paper_trading=PaperTradeService(paper_broker_factory("legacy", "10000000")),
+        paper_trading=PaperTradeService(paper_broker_factory),
         market_data=market_data,
         backtests=BacktestService(market_data),
         portfolio=PortfolioService(market_data),

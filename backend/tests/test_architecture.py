@@ -167,3 +167,9 @@ def test_account_application_services_do_not_construct_persistent_brokers():
     for name in ("account_query_service.py", "broker_query_service.py", "paper_trade_service.py"):
         source = (BACKEND / "application" / name).read_text(encoding="utf-8")
         assert "data.persistence" not in source
+
+
+def test_legacy_paper_service_does_not_construct_storage_at_container_creation():
+    source = (BACKEND / "application" / "container.py").read_text(encoding="utf-8")
+    assert "PaperTradeService(paper_broker_factory)" in source
+    assert "PaperTradeService(paper_broker_factory(" not in source
