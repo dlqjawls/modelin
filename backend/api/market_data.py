@@ -8,9 +8,6 @@ from application.container import get_container
 
 router = APIRouter(prefix="/api/market", tags=["Market Data"])
 
-_market_data = get_container().market_data
-
-
 # === Response Models ===
 
 class AssetInfoResponse(BaseModel):
@@ -53,8 +50,9 @@ async def search_assets(
     market: str = Query("krx", description="시장 (krx, us, crypto)"),
 ):
     """종목 검색"""
+    market_data = get_container().market_data
     try:
-        results = await _market_data.search(market, q)
+        results = await market_data.search(market, q)
     except ValueError as exc:
         raise HTTPException(400, str(exc)) from exc
     return [
@@ -79,8 +77,9 @@ async def get_ohlcv(
     interval: str = Query("1d", description="봉 간격 (1m, 5m, 15m, 1h, 1d, 1w, 1M)"),
 ):
     """OHLCV 데이터 조회"""
+    market_data = get_container().market_data
     try:
-        df = await _market_data.ohlcv(market, symbol, start, end, interval)
+        df = await market_data.ohlcv(market, symbol, start, end, interval)
     except ValueError as exc:
         raise HTTPException(400, str(exc)) from exc
     except Exception as e:
@@ -109,8 +108,9 @@ async def get_asset_info(
     market: str = Query("krx", description="시장"),
 ):
     """종목 기본 정보 조회"""
+    market_data = get_container().market_data
     try:
-        info = await _market_data.info(market, symbol)
+        info = await market_data.info(market, symbol)
     except ValueError as exc:
         raise HTTPException(400, str(exc)) from exc
     except Exception as e:
@@ -132,8 +132,9 @@ async def get_fundamental(
     market: str = Query("krx", description="시장"),
 ):
     """펀더멘털 데이터 조회"""
+    market_data = get_container().market_data
     try:
-        data = await _market_data.fundamental(market, symbol)
+        data = await market_data.fundamental(market, symbol)
     except ValueError as exc:
         raise HTTPException(400, str(exc)) from exc
     except Exception as e:
@@ -159,8 +160,9 @@ async def get_tickers(
     market: str = Query("krx", description="시장 (krx, us, crypto)"),
 ):
     """전체 종목 목록 조회"""
+    market_data = get_container().market_data
     try:
-        tickers = await _market_data.tickers(market)
+        tickers = await market_data.tickers(market)
     except ValueError as exc:
         raise HTTPException(400, str(exc)) from exc
     except Exception as e:

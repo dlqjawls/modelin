@@ -19,9 +19,6 @@ class PaperTradeRequest(BaseModel):
     price: Decimal = Field(gt=0)
 
 
-_paper = get_container().paper_trading
-
-
 @router.post("/paper/order")
 async def paper_trade_order(request: PaperTradeRequest):
     """실제 거래소를 호출하지 않는 즉시체결 모의 주문."""
@@ -29,8 +26,9 @@ async def paper_trade_order(request: PaperTradeRequest):
         raise HTTPException(409, "코인 자동매매는 현재 보류 상태입니다.")
     if request.market not in {"krx", "us"}:
         raise HTTPException(400, "지원 시장은 krx 또는 us입니다.")
+    paper = get_container().paper_trading
     try:
-        order = _paper.place_order(symbol=request.symbol, market=request.market, side=request.side,
+        order = paper.place_order(symbol=request.symbol, market=request.market, side=request.side,
                                    quantity=request.quantity, price=request.price)
         return {"order": order, "mode": "paper"}
     except ValueError as exc:
@@ -40,4 +38,4 @@ async def paper_trade_order(request: PaperTradeRequest):
 @router.get("/paper/positions")
 async def get_paper_positions():
     """모의투자 계좌 상태."""
-    return {"mode": "paper", **_paper.snapshot()}
+    return {"mode": "paper", **get_container().paper_trading.snapshot()}

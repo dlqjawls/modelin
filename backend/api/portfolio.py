@@ -6,9 +6,6 @@ from pydantic import BaseModel
 from application.container import get_container
 
 router = APIRouter(prefix="/api/portfolio", tags=["Portfolio"])
-_portfolio = get_container().portfolio
-
-
 class OptimizeRequest(BaseModel):
     """포트폴리오 최적화 요청"""
     symbols: list[str]
@@ -32,11 +29,12 @@ class OptimizeResponse(BaseModel):
 
 @router.post("/optimize", response_model=OptimizeResponse)
 async def optimize_portfolio(request: OptimizeRequest):
+    portfolio = get_container().portfolio
     """가격 기반의 명시적 포트폴리오 배분."""
     if request.market not in {"krx", "us", "crypto"}:
         raise HTTPException(400, "지원하지 않는 시장입니다.")
     try:
-        result = await _portfolio.optimize(
+        result = await portfolio.optimize(
             market=request.market, symbols=request.symbols,
             start_date=request.start_date, end_date=request.end_date, method=request.method,
         )

@@ -8,9 +8,6 @@ from application.container import get_container
 
 router = APIRouter(prefix="/api/screener", tags=["Screener"])
 
-_screener = get_container().screener
-
-
 class ScreenerRequest(BaseModel):
     """스크리닝 요청"""
     market: str = "krx"
@@ -29,9 +26,10 @@ class ScreenerResponse(BaseModel):
 
 @router.post("/run", response_model=ScreenerResponse)
 async def run_screener(request: ScreenerRequest):
+    screener = get_container().screener
     """종목 스크리닝 실행"""
     try:
-        results = await _screener.screen(
+        results = await screener.screen(
             market=request.market,
             conditions=request.conditions,
             sort_by=request.sort_by,

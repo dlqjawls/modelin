@@ -122,6 +122,20 @@ def test_api_layer_has_no_direct_domain_or_infrastructure_imports():
     assert not violations, f"API layer imports domain/infrastructure directly: {violations}"
 
 
+def test_research_and_trading_apis_do_not_build_services_at_import_time():
+    for name in ("market_data.py", "backtest.py", "portfolio.py", "screener.py", "trading.py"):
+        tree = ast.parse((BACKEND / "api" / name).read_text(encoding="utf-8"))
+        module_calls = [
+            node for node in tree.body
+            if isinstance(node, ast.Assign)
+            and isinstance(node.value, ast.Attribute)
+            and isinstance(node.value.value, ast.Call)
+            and isinstance(node.value.value.func, ast.Name)
+            and node.value.value.func.id == "get_container"
+        ]
+        assert not module_calls, f"{name} creates container services at import time"
+
+
 def test_application_container_shares_market_data_service_with_research_services():
     from application.container import get_container
 

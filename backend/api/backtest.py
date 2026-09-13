@@ -8,9 +8,6 @@ from application.container import get_container
 
 router = APIRouter(prefix="/api/backtest", tags=["Backtest"])
 
-_backtests = get_container().backtests
-
-
 class BacktestRequest(BaseModel):
     """백테스팅 요청"""
     symbols: list[str]
@@ -60,9 +57,10 @@ class StrategyScoreResponse(BaseModel):
 
 @router.post("/run", response_model=BacktestResponse)
 async def run_backtest(request: BacktestRequest):
+    backtests = get_container().backtests
     """백테스팅 실행"""
     try:
-        result = await _backtests.run(
+        result = await backtests.run(
             symbols=request.symbols, market=request.market,
             start_date=request.start_date, end_date=request.end_date,
             strategy=request.strategy, initial_capital=request.initial_capital,
@@ -89,11 +87,12 @@ async def run_backtest(request: BacktestRequest):
 
 @router.post("/compare", response_model=list[StrategyScoreResponse])
 async def compare_backtests(request: CompareRequest):
+    backtests = get_container().backtests
     """Compare candidates on an out-of-sample holdout; never auto-deploys a winner."""
     if request.market not in {"krx", "us", "crypto"} or not request.symbols:
         raise HTTPException(422, "지원하는 시장과 종목을 입력해주세요.")
     try:
-        scores = await _backtests.compare(
+        scores = await backtests.compare(
             market=request.market, symbols=request.symbols, start_date=request.start_date,
             end_date=request.end_date, strategies=request.strategies,
             initial_capital=request.initial_capital,
