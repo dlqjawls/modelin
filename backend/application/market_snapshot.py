@@ -2,6 +2,7 @@
 from dataclasses import dataclass
 
 from core.calendar import TradingCalendar
+from ports.market_data import PaperMarketDataAdapter
 
 
 @dataclass(frozen=True)
@@ -17,7 +18,7 @@ class PaperMarketSnapshotService:
     def __init__(self, calendar=None):
         self.calendar = calendar or TradingCalendar()
 
-    async def collect(self, deployment, *, data_adapter, as_of):
+    async def collect(self, deployment, *, data_adapter: PaperMarketDataAdapter, as_of):
         if not self.calendar.is_trading_day(deployment.get("market", "crypto"), as_of):
             return None, {"status": "skipped", "reason": "MARKET_CLOSED", "orders": []}
         symbols = deployment["strategy"].get("symbols", [])

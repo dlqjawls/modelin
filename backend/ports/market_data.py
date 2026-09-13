@@ -9,6 +9,12 @@ class MarketDataAdapter(Protocol):
     async def snapshot(self, symbols: list[str], timeframe: str, as_of: datetime) -> DataSnapshot: ...
 
 
+class PaperMarketDataAdapter(MarketDataAdapter, Protocol):
+    """Normalized market-data operations required by paper execution."""
+
+    def close_frame(self, snapshot: DataSnapshot): ...
+
+
 class ResearchMarketDataProvider(Protocol):
     """Provider contract for search, prices, and fundamental research data."""
 

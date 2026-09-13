@@ -180,3 +180,9 @@ def test_paper_application_services_use_broker_port():
         source = (BACKEND / "application" / name).read_text(encoding="utf-8")
         assert "from ports.broker import" in source
         assert "broker: BrokerAdapter" in source
+
+
+def test_paper_snapshot_uses_market_data_port():
+    source = (BACKEND / "application" / "market_snapshot.py").read_text(encoding="utf-8")
+    assert "from ports.market_data import PaperMarketDataAdapter" in source
+    assert "data_adapter: PaperMarketDataAdapter" in source

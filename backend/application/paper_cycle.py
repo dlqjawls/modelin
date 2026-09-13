@@ -9,6 +9,7 @@ from dataclasses import dataclass
 from typing import Awaitable, Callable
 
 from ports.broker import BrokerAdapter
+from ports.market_data import PaperMarketDataAdapter
 
 
 @dataclass(frozen=True)
@@ -27,7 +28,8 @@ class PaperCycleService:
         self._execution_service = execution_service
         self._snapshot_service = snapshot_service
 
-    async def execute(self, request: PaperCycleRequest, *, data_adapter, broker: BrokerAdapter, journal=None) -> dict:
+    async def execute(self, request: PaperCycleRequest, *, data_adapter: PaperMarketDataAdapter,
+                      broker: BrokerAdapter, journal=None) -> dict:
         if request.deployment.get("mode") != "paper":
             raise RuntimeError("paper cycle은 paper deployment만 허용합니다.")
         return await self._execute_cycle(
