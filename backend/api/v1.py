@@ -8,7 +8,6 @@ from typing import Literal
 from fastapi import APIRouter, Depends, Header, HTTPException
 from pydantic import BaseModel, Field
 from config import settings
-from core.persistent_paper_broker import account_database_path
 from core.strategy_runtime import validate_strategy
 from application.deployment_service import DeploymentConflict
 from application.operations_service import (
@@ -27,12 +26,12 @@ async def require_api_key(x_modelin_key: str | None = Header(default=None, alias
 router = APIRouter(prefix="/api/v1", tags=["Operations"], dependencies=[Depends(require_api_key)])
 _container = get_container()
 _store = _container.operations_store
-_brokers = _container.broker_registry
 _accounts = _container.account_service
 _deployments = _container.deployment_service
 _operations = _container.operations_service
 _queries = _container.operations_queries
 _account_queries = _container.account_queries
+_broker_queries = _container.broker_queries
 
 
 class PaperAccountRequest(BaseModel):
@@ -80,12 +79,11 @@ async def list_accounts():
 
 @router.get("/capabilities")
 async def capabilities(account_id: str):
-    account = _queries.account(account_id)
-    if not account:
-        raise HTTPException(404, "계좌를 찾을 수 없습니다.")
-    broker = _brokers.resolve(mode=account["mode"], venue="unconfigured", account_id=account_id,
-                              market=account["market"], paper_path=account_database_path(settings.PAPER_DB_PATH, account_id))
-    return {"account_id": account_id, "mode": account["mode"], "capabilities": (await broker.capabilities()).__dict__}
+    try:
+        account, capability_data = await _broker_queries.capabilities(account_id)
+        return {"account_id": account_id, "mode": account["mode"], "capabilities": capability_data}
+    except LookupError as exc:
+        raise HTTPException(404, str(exc)) from exc
 
 
 @router.get("/diagnostics")

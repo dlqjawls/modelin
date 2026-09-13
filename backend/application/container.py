@@ -15,6 +15,7 @@ from application.account_service import AccountService
 from application.operations_service import OperationsService
 from application.operations_query_service import OperationsQueryService
 from application.account_query_service import AccountQueryService
+from application.broker_query_service import BrokerQueryService
 
 
 @dataclass(frozen=True)
@@ -26,17 +27,20 @@ class ApplicationContainer:
     operations_service: OperationsService
     operations_queries: OperationsQueryService
     account_queries: AccountQueryService
+    broker_queries: BrokerQueryService
 
 
 @lru_cache(maxsize=1)
 def get_container() -> ApplicationContainer:
     store = OperationsStore(settings.PAPER_DB_PATH)
+    registry = BrokerRegistry()
     return ApplicationContainer(
         operations_store=store,
-        broker_registry=BrokerRegistry(),
+        broker_registry=registry,
         account_service=AccountService(store),
         deployment_service=DeploymentService(store),
         operations_service=OperationsService(store),
         operations_queries=OperationsQueryService(store),
         account_queries=AccountQueryService(store, settings.PAPER_DB_PATH),
+        broker_queries=BrokerQueryService(store, registry, settings.PAPER_DB_PATH),
     )
