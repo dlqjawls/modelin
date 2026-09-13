@@ -4,6 +4,9 @@ from datetime import datetime, timezone
 from decimal import Decimal
 from unittest.mock import AsyncMock, patch
 
+import pandas as pd
+
+from application.backtest_service import BacktestService
 from application.market_snapshot import PaperMarketSnapshotService
 from application.paper_decision import PaperDecisionService
 from application.paper_execution import PaperExecutionService
@@ -53,6 +56,40 @@ class RecordingBroker:
 
 
 class ApplicationServiceTests(unittest.TestCase):
+    def test_backtest_service_loads_data_before_calling_pure_engine(self):
+        class Provider:
+            async def get_ohlcv(self, symbol, start, end, interval):
+                index = pd.date_range("2024-01-01", periods=2, tz="UTC")
+                return pd.DataFrame({
+                    "open": [10, 11], "high": [11, 12], "low": [9, 10],
+                    "close": [10, 12], "volume": [100, 110],
+                }, index=index)
+
+        class MarketData:
+            def provider(self, market):
+                self.market = market
+                return Provider()
+
+        class Engine:
+            def run_frames(self, config, opens, closes):
+                self.config = config
+                self.opens = opens
+                self.closes = closes
+                return {"status": "calculated"}
+
+        engine = Engine()
+        service = BacktestService(MarketData(), engine=engine)
+        result = asyncio.run(service.run(
+            symbols=["A"], market="krx", start_date="2024-01-01", end_date="2024-01-03",
+            strategy={"type": "equal_weight"}, initial_capital=1000,
+            commission_rate=0, slippage_rate=0, rebalance_period="1M",
+        ))
+
+        self.assertEqual(result["status"], "calculated")
+        self.assertEqual(engine.opens.columns.tolist(), ["A"])
+        self.assertEqual(engine.closes.iloc[-1, 0], 12)
+        self.assertEqual(engine.config.market, "krx")
+
     def test_api_lifespan_does_not_start_worker_when_disabled(self):
         async def scenario():
             with patch.object(settings, "PAPER_WORKER_ENABLED", False), patch.object(settings, "PAPER_DEPLOYMENT_FILE", ""):
