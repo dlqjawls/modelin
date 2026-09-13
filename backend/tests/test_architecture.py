@@ -149,3 +149,9 @@ def test_application_uses_domain_market_contract():
     for name in ("container.py", "market_data_service.py"):
         source = (BACKEND / "application" / name).read_text(encoding="utf-8")
         assert "data.providers.base" not in source
+
+
+def test_provider_value_objects_live_in_domain_contracts():
+    source = (BACKEND / "data" / "providers" / "base.py").read_text(encoding="utf-8")
+    assert "class AssetInfo" not in source
+    assert "class FundamentalData" not in source

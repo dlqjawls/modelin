@@ -4,41 +4,11 @@ Modelin - 데이터 프로바이더 베이스 클래스
 모든 시장별 프로바이더가 구현해야 할 통합 인터페이스를 정의합니다.
 """
 from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
 from datetime import datetime
 
 import pandas as pd
 
-from core.contracts import Market
-
-
-@dataclass
-class AssetInfo:
-    """종목/자산 기본 정보"""
-    symbol: str           # 종목 코드 (예: "005930", "AAPL", "BTC/KRW")
-    name: str             # 종목명 (예: "삼성전자", "Apple Inc.", "Bitcoin")
-    market: Market        # 시장 구분
-    sector: str = ""      # 섹터/업종
-    market_cap: float = 0 # 시가총액
-    currency: str = "KRW" # 통화
-    extra: dict = field(default_factory=dict)  # 추가 메타데이터
-
-
-@dataclass
-class FundamentalData:
-    """재무/펀더멘털 데이터"""
-    symbol: str
-    per: float | None = None       # 주가수익비율
-    pbr: float | None = None       # 주가순자산비율
-    psr: float | None = None       # 주가매출비율
-    eps: float | None = None       # 주당순이익
-    bps: float | None = None       # 주당순자산
-    roe: float | None = None       # 자기자본이익률
-    roa: float | None = None       # 총자산이익률
-    dividend_yield: float | None = None  # 배당수익률
-    operating_margin: float | None = None  # 영업이익률
-    debt_ratio: float | None = None  # 부채비율
-    extra: dict = field(default_factory=dict)
+from core.contracts import AssetInfo, FundamentalData, Market
 
 
 class BaseProvider(ABC):

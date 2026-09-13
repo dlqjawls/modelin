@@ -13,6 +13,31 @@ class Market(str, Enum):
     US = "us"
     CRYPTO = "crypto"
 
+@dataclass
+class AssetInfo:
+    symbol: str
+    name: str
+    market: Market
+    sector: str = ""
+    market_cap: float = 0
+    currency: str = "KRW"
+    extra: dict = field(default_factory=dict)
+
+@dataclass
+class FundamentalData:
+    symbol: str
+    per: float | None = None
+    pbr: float | None = None
+    psr: float | None = None
+    eps: float | None = None
+    bps: float | None = None
+    roe: float | None = None
+    roa: float | None = None
+    dividend_yield: float | None = None
+    operating_margin: float | None = None
+    debt_ratio: float | None = None
+    extra: dict = field(default_factory=dict)
+
 @dataclass(frozen=True)
 class Instrument:
     id: str
