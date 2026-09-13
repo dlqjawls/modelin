@@ -46,68 +46,23 @@ _OPS = {
 class ScreenerEngine:
     """팩터 기반 종목 스크리닝 엔진"""
 
-    def __init__(self, providers):
-        self._providers = providers
+    def __init__(self):
+        pass
 
-    async def screen(
-        self,
-        market: str,
-        conditions: list[ScreenerCondition],
-        sort_by: str = "market_cap",
-        sort_desc: bool = True,
-        limit: int = 50,
+    def screen_records(
+        self, records, conditions: list[ScreenerCondition],
+        sort_by: str = "market_cap", sort_desc: bool = True, limit: int = 50,
     ) -> list[ScreenerResult]:
-        """
-        팩터 기반 종목 스크리닝 실행.
-
-        Args:
-            market: 시장 코드 (krx, us, crypto)
-            conditions: 스크리닝 조건 리스트
-            sort_by: 정렬 기준 팩터
-            sort_desc: 내림차순 여부
-            limit: 최대 결과 수
-
-        Returns:
-            필터링된 종목 리스트
-        """
-        provider = self._providers.get(market)
-        if not provider:
-            raise ValueError(f"지원하지 않는 시장: {market}")
-
-        # 1. 전체 종목 목록 가져오기
-        tickers = await provider.get_tickers()
-
-        import asyncio
-
-        # 2. 각 종목의 펀더멘털 데이터 병렬 수집 + 필터링
+        """Filter and rank already collected ticker/fundamental records."""
         results: list[ScreenerResult] = []
-        sem = asyncio.Semaphore(15)
-
-        async def _process_ticker(ticker):
-            async with sem:
-                try:
-                    fundamental = await provider.get_fundamental(ticker.symbol)
-                    res = self._to_result(ticker, fundamental)
-                    if self._matches_conditions(res, conditions):
-                        return res
-                except Exception:
-                    pass
-                return None
-
-        # 상위 종목 중심 병렬 조회
-        target_tickers = tickers[:100]
-        processed = await asyncio.gather(*[_process_ticker(t) for t in target_tickers], return_exceptions=True)
-        for item in processed:
-            if isinstance(item, ScreenerResult):
-                results.append(item)
-
-        # 4. 정렬
+        for ticker, fundamental in records:
+            result = self._to_result(ticker, fundamental)
+            if self._matches_conditions(result, conditions):
+                results.append(result)
         results.sort(
             key=lambda r: getattr(r, sort_by, 0) or 0,
             reverse=sort_desc,
         )
-
-        # 5. 결과 수 제한
         return results[:limit]
 
     def _to_result(self, ticker, fundamental) -> ScreenerResult:

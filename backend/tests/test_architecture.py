@@ -112,6 +112,4 @@ def test_application_container_shares_market_data_service_with_research_services
     container = get_container()
     assert container.backtests.market_data is container.market_data
     assert container.portfolio.market_data is container.market_data
-    assert container.screener.engine._providers["krx"] is container.market_data.providers[next(
-        market for market in container.market_data.providers if market.value == "krx"
-    )]
+    assert container.screener.market_data is container.market_data
