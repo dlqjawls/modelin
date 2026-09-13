@@ -15,6 +15,7 @@ class Settings:
     APP_NAME: str = "Modelin"
     APP_VERSION: str = "0.1.0"
     DEBUG: bool = os.getenv("DEBUG", "true").lower() == "true"
+    API_ACCESS_KEY: str = os.getenv("MODEL_API_KEY", "")
 
     # === Supabase ===
     SUPABASE_URL: str = os.getenv("SUPABASE_URL", "")

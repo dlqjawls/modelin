@@ -38,7 +38,7 @@ from core.live_gate import LiveTradingGate
 from adapters.market_data.news_feed import RSSNewsContext
 from adapters.market_data.official_sources import OpenDartClient, SecSubmissionsClient
 from adapters.market_data.fred_macro import FredMacroContext
-from api.v1 import create_deployment, create_paper_account
+from api.v1 import create_deployment, create_paper_account, require_api_key
 from tempfile import TemporaryDirectory
 
 
@@ -521,6 +521,9 @@ class QuantCoreTests(unittest.TestCase):
     def test_fred_macro_collector_is_optional_without_api_key(self):
         result = asyncio.run(FredMacroContext("").collect())
         self.assertFalse(result["macro_configured"])
+
+    def test_operations_api_auth_is_disabled_without_configured_key(self):
+        self.assertIsNone(asyncio.run(require_api_key(None)))
 
     def test_deployment_creation_executes_validation_and_persists(self):
         async def scenario():

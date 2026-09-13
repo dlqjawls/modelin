@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 from typing import Literal
 from uuid import uuid4
 
-from fastapi import APIRouter, Header, HTTPException
+from fastapi import APIRouter, Depends, Header, HTTPException
 from pydantic import BaseModel, Field
 from config import settings
 from core.operations_store import OperationsStore
@@ -15,7 +15,13 @@ from core.persistent_paper_broker import PersistentPaperBroker, account_database
 from core.strategy_runtime import validate_strategy
 from adapters.brokers.registry import BrokerRegistry
 
-router = APIRouter(prefix="/api/v1", tags=["Operations"])
+async def require_api_key(x_modelin_key: str | None = Header(default=None, alias="X-Modelin-Key")):
+    """Optional protection for the operations API when deployed remotely."""
+    if settings.API_ACCESS_KEY and x_modelin_key != settings.API_ACCESS_KEY:
+        raise HTTPException(401, "운영 API 인증이 필요합니다.")
+
+
+router = APIRouter(prefix="/api/v1", tags=["Operations"], dependencies=[Depends(require_api_key)])
 _store = OperationsStore(settings.PAPER_DB_PATH)
 _brokers = BrokerRegistry()
 
