@@ -17,6 +17,7 @@ from data.providers.krx_provider import KRXProvider
 from data.providers.us_provider import USProvider
 from data.providers.crypto_provider import CryptoProvider
 from data.persistence.operations_store import OperationsStore
+from data.persistence.persistent_paper_broker import PersistentPaperBroker, account_database_path
 
 from application.deployment_service import DeploymentService
 from application.account_service import AccountService
@@ -64,6 +65,11 @@ class ApplicationContainer:
 def get_container() -> ApplicationContainer:
     store = OperationsStore(settings.PAPER_DB_PATH)
     registry = BrokerRegistry()
+    def paper_broker_factory(account_id, initial_cash):
+        return PersistentPaperBroker(
+            account_database_path(settings.PAPER_DB_PATH, account_id),
+            initial_cash=initial_cash,
+        )
     def broker_factory(market):
         return KISBrokerAdapter(KISConfig(
             app_key=settings.KIS_APP_KEY,
@@ -82,8 +88,8 @@ def get_container() -> ApplicationContainer:
         deployment_service=DeploymentService(store),
         operations_service=OperationsService(store),
         operations_queries=OperationsQueryService(store),
-        account_queries=AccountQueryService(store, settings.PAPER_DB_PATH),
-        broker_queries=BrokerQueryService(store, registry, settings.PAPER_DB_PATH),
+        account_queries=AccountQueryService(store, paper_broker_factory),
+        broker_queries=BrokerQueryService(store, registry, lambda account_id: account_database_path(settings.PAPER_DB_PATH, account_id)),
         idempotency=IdempotencyService(store),
         paper_decisions=PaperDecisionService(),
         paper_execution=PaperExecutionService(),
@@ -97,7 +103,7 @@ def get_container() -> ApplicationContainer:
         system_queries=SystemQueryService(
             settings, store, broker_factory=broker_factory, macro_factory=FredMacroContext,
         ),
-        paper_trading=PaperTradeService(settings.PAPER_DB_PATH),
+        paper_trading=PaperTradeService(paper_broker_factory("legacy", "10000000")),
         market_data=market_data,
         backtests=BacktestService(market_data),
         portfolio=PortfolioService(market_data),

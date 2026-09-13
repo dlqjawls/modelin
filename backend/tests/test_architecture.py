@@ -161,3 +161,9 @@ def test_market_data_application_uses_port_contract():
     source = (BACKEND / "application" / "market_data_service.py").read_text(encoding="utf-8")
     assert "from ports.market_data import ResearchMarketDataProvider" in source
     assert "data.providers" not in source
+
+
+def test_account_application_services_do_not_construct_persistent_brokers():
+    for name in ("account_query_service.py", "broker_query_service.py", "paper_trade_service.py"):
+        source = (BACKEND / "application" / name).read_text(encoding="utf-8")
+        assert "data.persistence" not in source

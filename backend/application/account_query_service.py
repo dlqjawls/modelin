@@ -1,11 +1,11 @@
 """Application queries for account state and paper broker history."""
-from data.persistence.persistent_paper_broker import PersistentPaperBroker, account_database_path
+from ports.paper_account import PaperAccountBrokerFactory
 
 
 class AccountQueryService:
-    def __init__(self, store, database_path):
+    def __init__(self, store, broker_factory: PaperAccountBrokerFactory):
         self.store = store
-        self.database_path = database_path
+        self.broker_factory = broker_factory
 
     def _paper_broker(self, account_id):
         account = self.store.account(account_id)
@@ -13,10 +13,7 @@ class AccountQueryService:
             raise LookupError("계좌를 찾을 수 없습니다.")
         if account["mode"] != "paper":
             raise RuntimeError("현재 live 계좌 조회는 구현되지 않았습니다.")
-        return account, PersistentPaperBroker(
-            account_database_path(self.database_path, account_id),
-            initial_cash=account["initial_cash"],
-        )
+        return account, self.broker_factory(account_id, account["initial_cash"])
 
     def snapshot(self, account_id):
         account, broker = self._paper_broker(account_id)

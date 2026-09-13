@@ -1,12 +1,12 @@
 """Application service for the legacy immediate-fill paper trading API."""
 from decimal import Decimal
 
-from data.persistence.persistent_paper_broker import PersistentPaperBroker
+from ports.paper_account import PaperAccountBroker
 
 
 class PaperTradeService:
-    def __init__(self, database_path):
-        self._broker = PersistentPaperBroker(database_path)
+    def __init__(self, broker: PaperAccountBroker):
+        self._broker = broker
 
     def place_order(self, *, symbol: str, market: str, side: str,
                     quantity: Decimal, price: Decimal) -> dict:
