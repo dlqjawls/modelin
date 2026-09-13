@@ -1,9 +1,9 @@
 """Application service for submitting approved paper orders."""
-from ports.broker import OrderRequest
+from ports.broker import BrokerAdapter, OrderRequest
 
 
 class PaperExecutionService:
-    async def submit_intents(self, *, deployment, intents, broker, client_ids):
+    async def submit_intents(self, *, deployment, intents, broker: BrokerAdapter, client_ids):
         submitted = []
         for intent in intents:
             request = OrderRequest(
@@ -17,7 +17,7 @@ class PaperExecutionService:
             submitted.append(await broker.submit(request))
         return submitted
 
-    async def liquidate(self, *, deployment, positions, prices, broker, schedule_key):
+    async def liquidate(self, *, deployment, positions, prices, broker: BrokerAdapter, schedule_key):
         submitted = []
         for position in positions:
             symbol = position.get("symbol")

@@ -173,3 +173,10 @@ def test_legacy_paper_service_does_not_construct_storage_at_container_creation()
     source = (BACKEND / "application" / "container.py").read_text(encoding="utf-8")
     assert "PaperTradeService(paper_broker_factory)" in source
     assert "PaperTradeService(paper_broker_factory(" not in source
+
+
+def test_paper_application_services_use_broker_port():
+    for name in ("paper_execution.py", "paper_cycle.py"):
+        source = (BACKEND / "application" / name).read_text(encoding="utf-8")
+        assert "from ports.broker import" in source
+        assert "broker: BrokerAdapter" in source
