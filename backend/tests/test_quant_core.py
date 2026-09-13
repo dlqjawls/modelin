@@ -6,7 +6,7 @@ import pandas as pd
 import httpx
 
 from core.backtester import BacktestConfig, BacktestEngine
-from core.paper_broker import PaperBroker
+from adapters.brokers.in_memory_paper import PaperBroker
 from data.persistence.persistent_paper_broker import PersistentPaperBroker, account_database_path
 from data.persistence.execution_journal import ExecutionJournal
 from data.persistence.account_lease import AccountLeaseStore

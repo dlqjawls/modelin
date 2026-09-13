@@ -22,5 +22,6 @@ core          -> 외부 SDK·provider·API 라우터를 import하지 않음
 
 `core/contracts.py`는 정규화된 시장 데이터 계약을 소유한다. `data/contracts.py`는 기존 import를 위한 호환 모듈이며, 새 코드는 `core.contracts`를 사용한다.
 `data/persistence/`는 SQLite·PostgreSQL 저장소 구현을 소유하며, `core`는 저장소 기술을 직접 import하지 않는다.
+Paper 브로커 구현(`in_memory_paper.py`, `paper.py`)도 `adapters/brokers/`에 두며, `core`에는 주문 규칙과 상태 모델만 둔다.
 
 `application/container.py`는 외부 구현을 연결하는 유일한 composition root다. 하나의 `MarketDataService` 인스턴스를 백테스트·포트폴리오·스크리너가 공유해 provider 수명주기와 설정을 일관되게 유지한다. `BacktestEngine`은 가격 프레임을, `ScreenerEngine`은 수집된 ticker/fundamental record를 입력으로 받아 순수 계산·변환·필터링만 수행한다. 시장 데이터 수집과 동시성·실패 처리는 application service가 담당한다. 테스트에서는 provider factory와 broker/data adapter를 가짜 구현으로 주입할 수 있다. 실행 프로세스의 runtime 조립은 `workers/paper_runtime.py`에 두어 유스케이스 계층이 KIS SDK나 provider 생성 방식에 의존하지 않도록 한다.

@@ -33,6 +33,11 @@ def test_core_does_not_own_persistence_implementations():
     assert not violations, f"core imports persistence implementation: {violations}"
 
 
+def test_core_does_not_contain_broker_implementations():
+    assert not (BACKEND / "core" / "paper_broker.py").exists()
+    assert (BACKEND / "adapters" / "brokers" / "in_memory_paper.py").exists()
+
+
 def test_adapters_do_not_depend_on_api_or_workers():
     forbidden = {"api", "workers"}
     violations = [(path, module) for path, module in _imports_under("adapters") if module in forbidden]
