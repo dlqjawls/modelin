@@ -1,13 +1,15 @@
 """Application queries for normalized market data provider access."""
+from collections.abc import Mapping
+
 from core.contracts import Market
 from ports.market_data import ResearchMarketDataProvider
 
 
 class MarketDataService:
-    def __init__(self, providers: dict[Market, ResearchMarketDataProvider]):
+    def __init__(self, providers: Mapping[Market, ResearchMarketDataProvider]):
         self.providers = providers
 
-    def provider(self, market: str):
+    def provider(self, market: str) -> ResearchMarketDataProvider:
         try:
             key = Market(market.lower())
         except ValueError as exc:
