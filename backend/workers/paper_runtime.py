@@ -1,4 +1,4 @@
-"""Composition helpers for paper market runtimes."""
+"""Infrastructure composition for the paper runner."""
 from dataclasses import dataclass
 
 from adapters.brokers.kis import KISBrokerAdapter, KISConfig

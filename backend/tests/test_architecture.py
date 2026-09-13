@@ -41,3 +41,8 @@ def test_paper_context_service_does_not_construct_external_adapters():
     violations = [(source, module) for source, module in imports
                   if source == path and module == "adapters"]
     assert not violations, f"paper context service imports adapters directly: {violations}"
+
+
+def test_runtime_composition_lives_outside_application_layer():
+    assert not (BACKEND / "application" / "paper_runtime.py").exists()
+    assert (BACKEND / "workers" / "paper_runtime.py").exists()

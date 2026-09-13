@@ -13,7 +13,7 @@ from pathlib import Path
 from config import settings
 from workers.paper_worker import paper_cycle_service
 from application.paper_cycle import PaperCycleRequest
-from application.paper_runtime import build_paper_runtime
+from workers.paper_runtime import build_paper_runtime
 from application.container import get_container
 from core.strategy_runtime import validate_strategy
 from core.execution_journal import ExecutionJournal
