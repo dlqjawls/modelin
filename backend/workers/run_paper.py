@@ -11,14 +11,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from config import settings
-from adapters.market_data.news_feed import RSSNewsContext
-from adapters.market_data.official_sources import OpenDartClient, SecSubmissionsClient
-from adapters.market_data.fred_macro import FredMacroContext
-from core.market_context import NewsEventEngine
-from core.market_context import MacroContext
 from workers.paper_worker import paper_cycle_service
 from application.paper_cycle import PaperCycleRequest
 from application.paper_runtime import build_paper_runtime
+from application.container import get_container
 from core.strategy_runtime import validate_strategy
 from core.execution_journal import ExecutionJournal
 from workers.paper_worker import recover_pending_submissions
@@ -52,6 +48,7 @@ async def run(deployment, interval_seconds, once=False, deployment_loader=None, 
     broker, data = runtime.broker, runtime.data
     journal = ExecutionJournal(settings.PAPER_DB_PATH)
     cycle_service = paper_cycle_service()
+    context_service = get_container().paper_context
     recovery = await recover_pending_submissions(journal, broker)
     if recovery["unknown"]:
         logger.warning("unresolved execution intents remain pending: %s", recovery["unknown"])
@@ -65,42 +62,7 @@ async def run(deployment, interval_seconds, once=False, deployment_loader=None, 
                     return
                 await asyncio.sleep(interval_seconds)
                 continue
-            if settings.NEWS_FEEDS:
-                news_context = await RSSNewsContext(settings.NEWS_FEEDS).collect()
-                strategy = dict(deployment.get("strategy", {}))
-                context = dict(strategy.get("context", {}))
-                context.update(news_context)
-                strategy["context"] = context
-                deployment = {**deployment, "strategy": strategy}
-            if settings.FRED_API_KEY or settings.PAPER_WORKER_ENABLED:
-                macro = await FredMacroContext(settings.FRED_API_KEY).collect()
-                strategy = dict(deployment.get("strategy", {}))
-                context = MacroContext.build(
-                    fx_change_20d=macro.get("fx_change_20d", 0.0),
-                    rate_change_20d=macro.get("rate_change_20d", 0.0),
-                    volatility=macro.get("vix_latest", 0.0) / 100.0,
-                    news=strategy.get("context", {}),
-                )
-                context.update(macro)
-                strategy["context"] = context
-                deployment = {**deployment, "strategy": strategy}
-            if settings.OPENDART_API_KEY or settings.SEC_CIKS:
-                official_events = []
-                if settings.OPENDART_API_KEY:
-                    dart = OpenDartClient(settings.OPENDART_API_KEY)
-                    for corp_code in deployment.get("corp_codes", []):
-                        official_events.extend(await dart.filings(corp_code=corp_code))
-                if settings.SEC_USER_AGENT:
-                    sec = SecSubmissionsClient(settings.SEC_USER_AGENT)
-                    for cik in settings.SEC_CIKS:
-                        official_events.extend(await sec.filings(cik))
-                if official_events:
-                    context = dict(deployment["strategy"].get("context", {}))
-                    official_news = NewsEventEngine().aggregate(
-                        NewsEventEngine().classify(item.title, item.source, item.published_at)
-                        for item in official_events)
-                    context.update(official_news)
-                    deployment = {**deployment, "strategy": {**deployment["strategy"], "context": context}}
+            deployment = await context_service.enrich(deployment)
             result = await cycle_service.execute(
                 PaperCycleRequest(deployment, datetime.now(timezone.utc)),
                 data_adapter=data, broker=broker, journal=journal,

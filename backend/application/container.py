@@ -20,6 +20,7 @@ from application.idempotency_service import IdempotencyService
 from application.paper_decision import PaperDecisionService
 from application.paper_execution import PaperExecutionService
 from application.market_snapshot import PaperMarketSnapshotService
+from application.paper_context import PaperContextService
 
 
 @dataclass(frozen=True)
@@ -36,6 +37,7 @@ class ApplicationContainer:
     paper_decisions: PaperDecisionService
     paper_execution: PaperExecutionService
     market_snapshots: PaperMarketSnapshotService
+    paper_context: PaperContextService
 
 
 @lru_cache(maxsize=1)
@@ -55,4 +57,5 @@ def get_container() -> ApplicationContainer:
         paper_decisions=PaperDecisionService(),
         paper_execution=PaperExecutionService(),
         market_snapshots=PaperMarketSnapshotService(),
+        paper_context=PaperContextService(),
     )
