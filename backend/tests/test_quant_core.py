@@ -67,6 +67,24 @@ class QuantCoreTests(unittest.TestCase):
         self.assertEqual(result["status"], "executed")
         self.assertEqual(broker.requests[0].quantity, Decimal("10"))
 
+    def test_paper_order_ids_change_with_schedule_without_journal(self):
+        class CountingBroker:
+            def __init__(self): self.requests = []
+            async def submit(self, request):
+                self.requests.append(request)
+                return {"client_order_id": request.client_order_id, "status": "filled"}
+
+        deployment = {"id": "d-cycle", "account_id": "a", "mode": "paper", "observed_state": "RUNNING",
+                      "allocation_amount": "100", "cash_buffer": "0",
+                      "strategy": {"type": "equal_weight", "symbols": ["A"]}}
+        prices = pd.DataFrame({"A": [10]}, index=pd.date_range("2024-01-01", periods=1))
+        broker = CountingBroker()
+        for schedule_key in ("2024-01-01T00:00:00+00:00", "2024-01-02T00:00:00+00:00"):
+            asyncio.run(execute_once(deployment, close_prices=prices, prices={"A": Decimal("10")},
+                                      broker=broker, account_snapshot={"cash": "1000", "positions": []},
+                                      schedule_key=schedule_key))
+        self.assertNotEqual(broker.requests[0].client_order_id, broker.requests[1].client_order_id)
+
     def test_strategy_comparator_uses_same_sample_and_returns_ranked_scores(self):
         index = pd.date_range("2024-01-01", periods=80)
         closes = pd.DataFrame({"A": [100 + i for i in range(80)]}, index=index)

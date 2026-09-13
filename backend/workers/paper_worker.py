@@ -103,11 +103,13 @@ async def execute_once(deployment: dict, *, close_prices: pd.DataFrame, prices: 
     planning_nav = min(nav, allocation)
     intents = planner.plan(cash=account_snapshot["cash"], target_weights=decision.target_weights,
                            positions=positions, prices=prices, nav=planning_nav)
+    last_index = close_prices.index[-1]
+    default_schedule_key = last_index.isoformat() if hasattr(last_index, "isoformat") else str(last_index)
+    schedule_key = schedule_key or default_schedule_key
+    run_token = hashlib.sha256(schedule_key.encode("utf-8")).hexdigest()[:12]
+    client_ids = {intent.symbol: f"paper-{deployment['id']}-{run_token}-{intent.symbol}-{intent.side}" for intent in intents}
     if journal is not None:
-        schedule_key = schedule_key or close_prices.index[-1].isoformat()
         existing_run = journal.has_run(deployment["id"], schedule_key)
-        run_token = hashlib.sha256(schedule_key.encode("utf-8")).hexdigest()[:12]
-        client_ids = {intent.symbol: f"paper-{deployment['id']}-{run_token}-{intent.symbol}-{intent.side}" for intent in intents}
         _, journal_rows = journal.commit_plan(deployment_id=deployment["id"], schedule_key=schedule_key,
                                               decision={"kind": decision.kind, "reason_codes": decision.reason_codes,
                                                         "target_weights": decision.target_weights}, intents=[
@@ -119,7 +121,7 @@ async def execute_once(deployment: dict, *, close_prices: pd.DataFrame, prices: 
             return {"status": "already_journaled", "reason_codes": decision.reason_codes, "orders": journal_rows}
     submitted = []
     for intent in intents:
-        client_order_id = client_ids[intent.symbol] if journal is not None else f"paper-{deployment['id']}-{intent.symbol}-{intent.side}"
+        client_order_id = client_ids[intent.symbol]
         request = OrderRequest(account_id=deployment["account_id"], client_order_id=client_order_id,
                                symbol=intent.symbol, side=intent.side, quantity=intent.quantity,
                                limit_price=intent.reference_price)
