@@ -11,6 +11,9 @@ from config import settings
 from core.persistent_paper_broker import PersistentPaperBroker, account_database_path
 from core.strategy_runtime import validate_strategy
 from application.deployment_service import DeploymentConflict
+from application.operations_service import (
+    DeploymentNotFound, DeploymentRevisionConflict, DeploymentStateConflict,
+)
 from application.container import get_container
 from adapters.brokers.kis import KISBrokerAdapter, KISConfig
 from adapters.market_data.fred_macro import FredMacroContext
@@ -27,6 +30,7 @@ _store = _container.operations_store
 _brokers = _container.broker_registry
 _accounts = _container.account_service
 _deployments = _container.deployment_service
+_operations = _container.operations_service
 
 
 class PaperAccountRequest(BaseModel):
@@ -206,36 +210,12 @@ async def command_deployment(deployment_id: str, request: CommandRequest, idempo
         raise HTTPException(409, str(exc)) from exc
     if prior:
         return prior["response"]
-    item = _store.deployment(deployment_id)
-    if not item:
-        raise HTTPException(404, "deployment을 찾을 수 없습니다.")
-    if request.expected_revision is not None and request.expected_revision != item["revision"]:
-        raise HTTPException(409, "deployment revision이 오래되었습니다.")
-    command = request.type
-    if command in {"START", "RESUME"}:
-        item["desired_state"] = "RUNNING"
-        # A control API request cannot prove that market data, reconciliation,
-        # and broker capabilities are ready. The worker must promote STARTING
-        # to RUNNING after those checks pass.
-        item["observed_state"] = "STARTING"
-    elif command == "PAUSE":
-        item["pause_epoch"] += 1
-        item["desired_state"] = item["observed_state"] = "PAUSED"
-    elif command == "CANCEL_OPEN":
-        item["pause_epoch"] += 1
-        item["desired_state"] = "PAUSED"
-        item["observed_state"] = "CANCELING"
-    elif command == "LIQUIDATE":
-        item["pause_epoch"] += 1
-        item["desired_state"] = "LIQUIDATING"
-        item["observed_state"] = "LIQUIDATING"
-    elif command == "ARCHIVE":
-        item["desired_state"] = item["observed_state"] = "ARCHIVED"
-    expected_revision = item["revision"]
-    item["revision"] += 1
-    if not _store.update_deployment_if_revision(item, expected_revision):
-        raise HTTPException(409, "deployment 상태가 동시에 변경되었습니다.")
-    result = {"command_id": str(uuid4()), "status": "ACCEPTED", "command": command, **item}
+    try:
+        result = _operations.command(deployment_id, request.type, request.expected_revision)
+    except DeploymentNotFound as exc:
+        raise HTTPException(404, str(exc)) from exc
+    except (DeploymentRevisionConflict, DeploymentStateConflict) as exc:
+        raise HTTPException(409, str(exc)) from exc
     _store.save_idempotent_response(scope="anonymous", endpoint=endpoint, key=idempotency_key,
                                     payload=payload, status_code=202, response=result)
     return result
