@@ -12,6 +12,10 @@ from adapters.brokers.kis import KISBrokerAdapter, KISConfig
 from adapters.market_data.fred_macro import FredMacroContext
 from adapters.market_data.news_feed import RSSNewsContext
 from adapters.market_data.official_sources import OpenDartClient, SecSubmissionsClient
+from data.providers.base import Market
+from data.providers.krx_provider import KRXProvider
+from data.providers.us_provider import USProvider
+from data.providers.crypto_provider import CryptoProvider
 from core.operations_store import OperationsStore
 
 from application.deployment_service import DeploymentService
@@ -27,6 +31,7 @@ from application.market_snapshot import PaperMarketSnapshotService
 from application.paper_context import PaperContextService
 from application.system_query_service import SystemQueryService
 from application.paper_trade_service import PaperTradeService
+from application.market_data_service import MarketDataService
 
 
 @dataclass(frozen=True)
@@ -46,6 +51,7 @@ class ApplicationContainer:
     paper_context: PaperContextService
     system_queries: SystemQueryService
     paper_trading: PaperTradeService
+    market_data: MarketDataService
 
 
 @lru_cache(maxsize=1)
@@ -83,4 +89,7 @@ def get_container() -> ApplicationContainer:
             settings, store, broker_factory=broker_factory, macro_factory=FredMacroContext,
         ),
         paper_trading=PaperTradeService(settings.PAPER_DB_PATH),
+        market_data=MarketDataService({
+            Market.KRX: KRXProvider(), Market.US: USProvider(), Market.CRYPTO: CryptoProvider(),
+        }),
     )

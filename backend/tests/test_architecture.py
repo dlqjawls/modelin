@@ -61,3 +61,11 @@ def test_trading_api_does_not_construct_paper_repository():
     violations = [(source, module) for source, module in imports
                   if source == path and module == "core"]
     assert not violations, f"trading API imports persistence implementation: {violations}"
+
+
+def test_market_data_api_does_not_construct_providers():
+    path = BACKEND / "api" / "market_data.py"
+    imports = list(_imports_under("api"))
+    violations = [(source, module) for source, module in imports
+                  if source == path and module in {"data", "adapters"}]
+    assert not violations, f"market data API constructs providers: {violations}"

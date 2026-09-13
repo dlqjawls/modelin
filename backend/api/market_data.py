@@ -4,28 +4,11 @@ Modelin - 시장 데이터 API 라우터
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 
-from data.providers.base import Market
-from data.providers.krx_provider import KRXProvider
-from data.providers.us_provider import USProvider
-from data.providers.crypto_provider import CryptoProvider
+from application.container import get_container
 
 router = APIRouter(prefix="/api/market", tags=["Market Data"])
 
-# 프로바이더 인스턴스
-_providers = {
-    Market.KRX: KRXProvider(),
-    Market.US: USProvider(),
-    Market.CRYPTO: CryptoProvider(),
-}
-
-
-def _get_provider(market: str):
-    """시장 코드로 프로바이더 반환"""
-    try:
-        m = Market(market.lower())
-    except ValueError:
-        raise HTTPException(400, f"지원하지 않는 시장: {market}. 사용 가능: krx, us, crypto")
-    return _providers[m]
+_market_data = get_container().market_data
 
 
 # === Response Models ===
@@ -70,8 +53,10 @@ async def search_assets(
     market: str = Query("krx", description="시장 (krx, us, crypto)"),
 ):
     """종목 검색"""
-    provider = _get_provider(market)
-    results = await provider.search(q)
+    try:
+        results = await _market_data.search(market, q)
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
     return [
         AssetInfoResponse(
             symbol=r.symbol,
@@ -94,10 +79,10 @@ async def get_ohlcv(
     interval: str = Query("1d", description="봉 간격 (1m, 5m, 15m, 1h, 1d, 1w, 1M)"),
 ):
     """OHLCV 데이터 조회"""
-    provider = _get_provider(market)
-
     try:
-        df = await provider.get_ohlcv(symbol, start, end, interval)
+        df = await _market_data.ohlcv(market, symbol, start, end, interval)
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
     except Exception as e:
         raise HTTPException(500, f"데이터 조회 실패: {str(e)}")
 
@@ -124,10 +109,10 @@ async def get_asset_info(
     market: str = Query("krx", description="시장"),
 ):
     """종목 기본 정보 조회"""
-    provider = _get_provider(market)
-
     try:
-        info = await provider.get_info(symbol)
+        info = await _market_data.info(market, symbol)
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
     except Exception as e:
         raise HTTPException(500, f"정보 조회 실패: {str(e)}")
 
@@ -147,10 +132,10 @@ async def get_fundamental(
     market: str = Query("krx", description="시장"),
 ):
     """펀더멘털 데이터 조회"""
-    provider = _get_provider(market)
-
     try:
-        data = await provider.get_fundamental(symbol)
+        data = await _market_data.fundamental(market, symbol)
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
     except Exception as e:
         raise HTTPException(500, f"펀더멘털 조회 실패: {str(e)}")
 
@@ -174,10 +159,10 @@ async def get_tickers(
     market: str = Query("krx", description="시장 (krx, us, crypto)"),
 ):
     """전체 종목 목록 조회"""
-    provider = _get_provider(market)
-
     try:
-        tickers = await provider.get_tickers()
+        tickers = await _market_data.tickers(market)
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
     except Exception as e:
         raise HTTPException(500, f"종목 목록 조회 실패: {str(e)}")
 
