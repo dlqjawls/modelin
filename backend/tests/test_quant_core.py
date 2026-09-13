@@ -46,7 +46,7 @@ from tempfile import TemporaryDirectory
 class QuantCoreTests(unittest.TestCase):
     def test_moving_average_defaults_have_valid_warmup(self):
         prices = pd.DataFrame({"A": range(100, 180)}, index=pd.date_range("2024-01-01", periods=80))
-        signals = BacktestEngine()._generate_signals(prices, {"type": "moving_average"})
+        signals = BacktestEngine({})._generate_signals(prices, {"type": "moving_average"})
         self.assertEqual(len(signals), 80)
         self.assertFalse(signals.iloc[-1].isna().any())
 

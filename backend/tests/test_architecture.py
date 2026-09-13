@@ -23,6 +23,11 @@ def test_core_does_not_depend_on_delivery_layers():
     assert not violations, f"core imports delivery/application modules: {violations}"
 
 
+def test_core_does_not_construct_market_data_providers():
+    violations = [(path, module) for path, module in _imports_under("core") if module in {"data", "adapters"}]
+    assert not violations, f"core imports market data infrastructure: {violations}"
+
+
 def test_adapters_do_not_depend_on_api_or_workers():
     forbidden = {"api", "workers"}
     violations = [(path, module) for path, module in _imports_under("adapters") if module in forbidden]

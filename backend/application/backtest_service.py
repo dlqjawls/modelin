@@ -8,7 +8,9 @@ from core.strategy_comparator import compare_strategies
 class BacktestService:
     def __init__(self, market_data, engine=None):
         self.market_data = market_data
-        self.engine = engine or BacktestEngine()
+        self.engine = engine or BacktestEngine({
+            market.value: provider for market, provider in market_data.providers.items()
+        })
 
     async def run(self, *, symbols, market, start_date, end_date, strategy,
                   initial_capital, commission_rate, slippage_rate, rebalance_period):

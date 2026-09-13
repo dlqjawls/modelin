@@ -4,10 +4,6 @@ Modelin - 팩터 기반 종목 스크리닝 엔진
 import operator
 from dataclasses import dataclass, field
 
-from data.providers.base import Market, FundamentalData
-from data.providers.krx_provider import KRXProvider
-from data.providers.us_provider import USProvider
-from data.providers.crypto_provider import CryptoProvider
 
 
 @dataclass
@@ -50,12 +46,8 @@ _OPS = {
 class ScreenerEngine:
     """팩터 기반 종목 스크리닝 엔진"""
 
-    def __init__(self, providers=None):
-        self._providers = providers or {
-            "krx": KRXProvider(),
-            "us": USProvider(),
-            "crypto": CryptoProvider(),
-        }
+    def __init__(self, providers):
+        self._providers = providers
 
     async def screen(
         self,
@@ -118,7 +110,7 @@ class ScreenerEngine:
         # 5. 결과 수 제한
         return results[:limit]
 
-    def _to_result(self, ticker, fundamental: FundamentalData) -> ScreenerResult:
+    def _to_result(self, ticker, fundamental) -> ScreenerResult:
         """AssetInfo + FundamentalData를 ScreenerResult로 변환"""
         return ScreenerResult(
             symbol=ticker.symbol,

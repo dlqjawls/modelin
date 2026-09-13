@@ -41,11 +41,8 @@ class BacktestResult:
 
 
 class BacktestEngine:
-    def __init__(self):
-        from data.providers.crypto_provider import CryptoProvider
-        from data.providers.krx_provider import KRXProvider
-        from data.providers.us_provider import USProvider
-        self._providers = {"krx": KRXProvider(), "us": USProvider(), "crypto": CryptoProvider()}
+    def __init__(self, providers):
+        self._providers = providers
 
     async def run(self, config: BacktestConfig) -> BacktestResult:
         self._validate_config(config)
