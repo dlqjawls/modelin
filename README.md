@@ -15,7 +15,7 @@
 
 | 구분 | 기술 |
 |:---|:---|
-| Backend | FastAPI, Python 3.12+ |
+| Backend | FastAPI, Python 3.11+ |
 | Frontend | React, TypeScript, Vite |
 | Database | Supabase (PostgreSQL) |
 | Charts | TradingView Lightweight Charts, Recharts |
@@ -41,11 +41,9 @@ npm install
 npm run dev
 ```
 
-### Supabase 설정
+### 설정 및 실행 상태
 
-1. [Supabase](https://supabase.com)에서 프로젝트 생성
-2. `backend/schema.sql`을 SQL Editor에서 실행
-3. `.env` 파일에 `SUPABASE_URL`과 `SUPABASE_KEY` 설정
+로컬 개발과 Paper 검증은 SQLite를 사용한다. PostgreSQL migration은 운영 적용 전 검토 대상이며, 아직 기본 실행 경로가 아니다. API 키와 KIS 자격 증명은 `backend/.env`에만 둔다. `scripts/check-dev-environment.ps1`로 실행 환경을 먼저 확인한다.
 
 ## 📁 프로젝트 구조
 
@@ -54,10 +52,14 @@ modelin/
 ├── backend/                 # FastAPI 백엔드
 │   ├── main.py              # 서버 진입점
 │   ├── config.py            # 설정
+│   ├── application/         # 유스케이스와 의존성 조립
 │   ├── schema.sql           # DB 스키마
-│   ├── api/                 # API 라우터
-│   ├── core/                # 퀀트 엔진
-│   └── data/                # 데이터 프로바이더
+│   ├── api/                 # HTTP 라우터와 응답 변환
+│   ├── core/                # 순수 전략·위험·주문 도메인
+│   ├── ports/               # 브로커·시장 데이터 인터페이스
+│   ├── adapters/            # KIS·데이터 공급자 구현
+│   ├── workers/             # 반복 실행과 스케줄링
+│   └── tests/               # 회귀·아키텍처 경계 테스트
 ├── frontend/                # React 프론트엔드
 │   └── src/
 │       ├── components/      # UI 컴포넌트
