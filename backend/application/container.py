@@ -32,6 +32,7 @@ from application.paper_context import PaperContextService
 from application.system_query_service import SystemQueryService
 from application.paper_trade_service import PaperTradeService
 from application.market_data_service import MarketDataService
+from application.backtest_service import BacktestService
 
 
 @dataclass(frozen=True)
@@ -52,6 +53,7 @@ class ApplicationContainer:
     system_queries: SystemQueryService
     paper_trading: PaperTradeService
     market_data: MarketDataService
+    backtests: BacktestService
 
 
 @lru_cache(maxsize=1)
@@ -66,6 +68,9 @@ def get_container() -> ApplicationContainer:
             environment="paper",
             market=market,
         ))
+    market_data = MarketDataService({
+        Market.KRX: KRXProvider(), Market.US: USProvider(), Market.CRYPTO: CryptoProvider(),
+    })
     return ApplicationContainer(
         operations_store=store,
         broker_registry=registry,
@@ -89,7 +94,6 @@ def get_container() -> ApplicationContainer:
             settings, store, broker_factory=broker_factory, macro_factory=FredMacroContext,
         ),
         paper_trading=PaperTradeService(settings.PAPER_DB_PATH),
-        market_data=MarketDataService({
-            Market.KRX: KRXProvider(), Market.US: USProvider(), Market.CRYPTO: CryptoProvider(),
-        }),
+        market_data=market_data,
+        backtests=BacktestService(market_data),
     )

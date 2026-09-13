@@ -69,3 +69,11 @@ def test_market_data_api_does_not_construct_providers():
     violations = [(source, module) for source, module in imports
                   if source == path and module in {"data", "adapters"}]
     assert not violations, f"market data API constructs providers: {violations}"
+
+
+def test_backtest_api_does_not_construct_providers_or_engine():
+    path = BACKEND / "api" / "backtest.py"
+    imports = list(_imports_under("api"))
+    violations = [(source, module) for source, module in imports
+                  if source == path and module in {"data", "adapters"}]
+    assert not violations, f"backtest API constructs infrastructure: {violations}"
