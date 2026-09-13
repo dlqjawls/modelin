@@ -14,7 +14,7 @@ import pandas as pd
 
 from application.paper_decision import PaperDecisionService
 from application.paper_execution import PaperExecutionService
-from core.calendar import TradingCalendar
+from application.market_snapshot import PaperMarketSnapshotService
 from core.scheduler import PaperScheduler
 from core.execution_journal import ExecutionJournal
 from core.risk_guard import RiskGuard
@@ -22,7 +22,6 @@ from core.strategy_comparator import compare_strategies
 from application.paper_cycle import PaperCycleRequest, PaperCycleService
 
 logger = logging.getLogger("modelin.paper_worker")
-calendar = TradingCalendar()
 
 
 async def recover_pending_submissions(journal: ExecutionJournal, broker) -> dict:
@@ -132,18 +131,17 @@ async def execute_once(deployment: dict, *, close_prices: pd.DataFrame, prices: 
 
 
 async def execute_from_market_data(deployment: dict, *, data_adapter, broker, as_of, journal=None,
-                                   decision_service=None, execution_service=None):
+                                   decision_service=None, execution_service=None, snapshot_service=None):
     """Fetch a normalized snapshot and execute one safe paper cycle."""
     if deployment.get("mode") != "paper":
         raise RuntimeError("live deployment은 아직 지원되지 않습니다.")
-    if not calendar.is_trading_day(deployment.get("market", "crypto"), as_of):
-        return {"status": "skipped", "reason": "MARKET_CLOSED", "orders": []}
-    symbols = deployment["strategy"].get("symbols", [])
-    snapshot = await data_adapter.snapshot(symbols, deployment["strategy"].get("timeframe", "1d"), as_of)
-    usable = snapshot.usable_bars()
-    if not usable:
-        return {"status": "blocked", "reason": "NO_FINAL_MARKET_DATA", "orders": []}
-    close_prices = data_adapter.close_frame(snapshot)
+    snapshot_service = snapshot_service or PaperMarketSnapshotService()
+    prepared, early_result = await snapshot_service.collect(
+        deployment, data_adapter=data_adapter, as_of=as_of,
+    )
+    if early_result is not None:
+        return early_result
+    snapshot, usable, close_prices = prepared.snapshot, prepared.usable_bars, prepared.close_prices
     if deployment.get("strategy", {}).get("auto_select"):
         candidates = deployment["strategy"].get("candidates", [])
         if not candidates:
@@ -156,10 +154,9 @@ async def execute_from_market_data(deployment: dict, *, data_adapter, broker, as
         selected["context"] = deployment["strategy"].get("context", {})
         selected["adaptive"] = deployment["strategy"].get("adaptive", False)
         deployment = {**deployment, "strategy": selected}
-    latest_end = max(item.end for item in usable)
-    latest = {bar.instrument_id: bar.close for bar in usable if bar.end == latest_end}
+    latest = prepared.latest_prices
     account = await broker.account_snapshot()
-    schedule_key = latest_end.isoformat()
+    schedule_key = prepared.schedule_key
     if deployment.get("observed_state") == "LIQUIDATING":
         execution_service = execution_service or PaperExecutionService()
         liquidation_orders = await execution_service.liquidate(
@@ -182,6 +179,7 @@ def paper_cycle_service():
         execute_from_market_data,
         container.paper_decisions,
         container.paper_execution,
+        container.market_snapshots,
     )
 
 
