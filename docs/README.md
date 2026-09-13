@@ -20,6 +20,7 @@
 $env:PYTHONPATH="backend"
 python -m unittest discover -s backend/tests -v
 python -m compileall -q backend
+python scripts/check-architecture.py
 ```
 
 증권사·거래소가 미정인 동안 live adapter는 등록되지 않으며, `DisabledLiveBroker`가 외부 주문·조회·이벤트 호출을 모두 차단한다. PostgreSQL migration은 운영 DB 적용 전 검토가 필요한 foundation SQL이고, 로컬 개발 검증은 SQLite를 사용한다.
