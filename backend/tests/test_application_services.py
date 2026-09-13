@@ -62,6 +62,24 @@ class ApplicationServiceTests(unittest.TestCase):
 
         asyncio.run(scenario())
 
+    def test_api_lifespan_starts_and_cancels_enabled_worker(self):
+        async def worker(*args, **kwargs):
+            await asyncio.Event().wait()
+
+        async def scenario():
+            deployment = {"id": "d1", "account_id": "a1", "market": "krx", "mode": "paper"}
+            with patch.object(settings, "PAPER_WORKER_ENABLED", True), \
+                    patch.object(settings, "PAPER_DEPLOYMENT_FILE", "deployment.json"), \
+                    patch("main.load_deployment", return_value=deployment), \
+                    patch("main.run_paper_worker", new=worker):
+                async with lifespan(app):
+                    self.assertEqual(app.state.paper_worker, "running")
+                    self.assertIsNotNone(app.state.paper_worker_task)
+                    self.assertFalse(app.state.paper_worker_task.done())
+                self.assertIsNone(app.state.paper_worker_task)
+
+        asyncio.run(scenario())
+
     def test_worker_serve_can_construct_default_scheduler(self):
         async def scenario():
             async def loader():
