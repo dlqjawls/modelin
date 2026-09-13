@@ -5,8 +5,7 @@ from fastapi import APIRouter, HTTPException
 from decimal import Decimal
 from pydantic import BaseModel, Field
 
-from config import settings
-from core.persistent_paper_broker import PersistentPaperBroker
+from application.container import get_container
 
 router = APIRouter(prefix="/api/trading", tags=["Trading"])
 
@@ -20,7 +19,7 @@ class PaperTradeRequest(BaseModel):
     price: Decimal = Field(gt=0)
 
 
-_paper = PersistentPaperBroker(settings.PAPER_DB_PATH)
+_paper = get_container().paper_trading
 
 
 @router.post("/paper/order")
@@ -31,8 +30,8 @@ async def paper_trade_order(request: PaperTradeRequest):
     if request.market not in {"krx", "us"}:
         raise HTTPException(400, "지원 시장은 krx 또는 us입니다.")
     try:
-        order = _paper.order(symbol=request.symbol, market=request.market, side=request.side,
-                             quantity=request.quantity, price=request.price)
+        order = _paper.place_order(symbol=request.symbol, market=request.market, side=request.side,
+                                   quantity=request.quantity, price=request.price)
         return {"order": order, "mode": "paper"}
     except ValueError as exc:
         raise HTTPException(400, str(exc)) from exc

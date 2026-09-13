@@ -26,6 +26,7 @@ from application.paper_execution import PaperExecutionService
 from application.market_snapshot import PaperMarketSnapshotService
 from application.paper_context import PaperContextService
 from application.system_query_service import SystemQueryService
+from application.paper_trade_service import PaperTradeService
 
 
 @dataclass(frozen=True)
@@ -44,6 +45,7 @@ class ApplicationContainer:
     market_snapshots: PaperMarketSnapshotService
     paper_context: PaperContextService
     system_queries: SystemQueryService
+    paper_trading: PaperTradeService
 
 
 @lru_cache(maxsize=1)
@@ -80,4 +82,5 @@ def get_container() -> ApplicationContainer:
         system_queries=SystemQueryService(
             settings, store, broker_factory=broker_factory, macro_factory=FredMacroContext,
         ),
+        paper_trading=PaperTradeService(settings.PAPER_DB_PATH),
     )

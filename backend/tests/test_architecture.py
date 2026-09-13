@@ -53,3 +53,11 @@ def test_versioned_api_does_not_construct_external_adapters():
     violations = [(source, module) for source, module in _imports_under("api")
                   if source == path and module in {"adapters", "data"}]
     assert not violations, f"versioned API imports infrastructure adapters: {violations}"
+
+
+def test_trading_api_does_not_construct_paper_repository():
+    path = BACKEND / "api" / "trading.py"
+    imports = list(_imports_under("api"))
+    violations = [(source, module) for source, module in imports
+                  if source == path and module == "core"]
+    assert not violations, f"trading API imports persistence implementation: {violations}"
