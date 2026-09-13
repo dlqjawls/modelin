@@ -3,16 +3,17 @@
  *
  * 메인 앱 컴포넌트. 사이드바 네비게이션 + 페이지 라우팅.
  */
-import { useState } from 'react';
+import { lazy, Suspense, useState } from 'react';
 import Sidebar from './components/Sidebar';
 import HeaderBar from './components/HeaderBar';
-import Dashboard from './components/Dashboard';
-import ScreenerPanel from './components/ScreenerPanel';
-import BacktestPanel from './components/BacktestPanel';
-import ChartView from './components/ChartView';
-import TradingPanel from './components/TradingPanel';
-import PortfolioPanel from './components/PortfolioPanel';
-import SettingsPanel from './components/SettingsPanel';
+
+const Dashboard = lazy(() => import('./components/Dashboard'));
+const ScreenerPanel = lazy(() => import('./components/ScreenerPanel'));
+const BacktestPanel = lazy(() => import('./components/BacktestPanel'));
+const ChartView = lazy(() => import('./components/ChartView'));
+const TradingPanel = lazy(() => import('./components/TradingPanel'));
+const PortfolioPanel = lazy(() => import('./components/PortfolioPanel'));
+const SettingsPanel = lazy(() => import('./components/SettingsPanel'));
 
 export default function App() {
   const [activePage, setActivePage] = useState('dashboard');
@@ -42,7 +43,9 @@ export default function App() {
       <Sidebar activePage={activePage} onNavigate={setActivePage} />
       <main className="main-content">
         <HeaderBar />
-        {renderPage()}
+        <Suspense fallback={<div className="page-content">화면을 불러오는 중...</div>}>
+          {renderPage()}
+        </Suspense>
       </main>
     </div>
   );
