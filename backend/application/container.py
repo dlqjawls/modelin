@@ -13,6 +13,7 @@ from core.operations_store import OperationsStore
 from application.deployment_service import DeploymentService
 from application.account_service import AccountService
 from application.operations_service import OperationsService
+from application.operations_query_service import OperationsQueryService
 
 
 @dataclass(frozen=True)
@@ -22,6 +23,7 @@ class ApplicationContainer:
     account_service: AccountService
     deployment_service: DeploymentService
     operations_service: OperationsService
+    operations_queries: OperationsQueryService
 
 
 @lru_cache(maxsize=1)
@@ -33,4 +35,5 @@ def get_container() -> ApplicationContainer:
         account_service=AccountService(store),
         deployment_service=DeploymentService(store),
         operations_service=OperationsService(store),
+        operations_queries=OperationsQueryService(store),
     )

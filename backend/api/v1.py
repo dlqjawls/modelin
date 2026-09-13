@@ -31,6 +31,7 @@ _brokers = _container.broker_registry
 _accounts = _container.account_service
 _deployments = _container.deployment_service
 _operations = _container.operations_service
+_queries = _container.operations_queries
 
 
 class PaperAccountRequest(BaseModel):
@@ -73,12 +74,12 @@ async def create_paper_account(request: PaperAccountRequest, idempotency_key: st
 
 @router.get("/accounts")
 async def list_accounts():
-    return _store.accounts()
+    return _queries.accounts()
 
 
 @router.get("/capabilities")
 async def capabilities(account_id: str):
-    account = _store.account(account_id)
+    account = _queries.account(account_id)
     if not account:
         raise HTTPException(404, "계좌를 찾을 수 없습니다.")
     broker = _brokers.resolve(mode=account["mode"], venue="unconfigured", account_id=account_id,
@@ -132,7 +133,7 @@ async def live_diagnostics():
 
 @router.get("/accounts/{account_id}/snapshot")
 async def account_snapshot(account_id: str):
-    account = _store.account(account_id)
+    account = _queries.account(account_id)
     if not account:
         raise HTTPException(404, "계좌를 찾을 수 없습니다.")
     if account["mode"] != "paper":
@@ -143,7 +144,7 @@ async def account_snapshot(account_id: str):
 
 @router.get("/accounts/{account_id}/orders")
 async def account_orders(account_id: str):
-    account = _store.account(account_id)
+    account = _queries.account(account_id)
     if not account:
         raise HTTPException(404, "계좌를 찾을 수 없습니다.")
     if account["mode"] != "paper":
@@ -154,7 +155,7 @@ async def account_orders(account_id: str):
 
 @router.get("/accounts/{account_id}/events")
 async def account_events(account_id: str):
-    account = _store.account(account_id)
+    account = _queries.account(account_id)
     if not account:
         raise HTTPException(404, "계좌를 찾을 수 없습니다.")
     if account["mode"] != "paper":
@@ -188,12 +189,12 @@ async def create_deployment(request: DeploymentRequest, idempotency_key: str | N
 
 @router.get("/deployments")
 async def list_deployments():
-    return _store.deployments()
+    return _queries.deployments()
 
 
 @router.get("/deployments/{deployment_id}")
 async def get_deployment(deployment_id: str):
-    item = _store.deployment(deployment_id)
+    item = _queries.deployment(deployment_id)
     if not item:
         raise HTTPException(404, "deployment을 찾을 수 없습니다.")
     return item
