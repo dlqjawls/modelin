@@ -4,9 +4,8 @@ from decimal import Decimal
 
 import pandas as pd
 
-from core.backtester import BacktestEngine
-from core.backtester import SUPPORTED_STRATEGIES
 from core.regime_router import RegimeDetector, StrategyRouter
+from core.strategy_signals import SUPPORTED_STRATEGIES, generate_signals
 
 
 @dataclass(frozen=True)
@@ -49,7 +48,6 @@ def validate_strategy(strategy: dict, symbols=None) -> dict:
 
 class StrategyRuntime:
     def __init__(self):
-        self._signals = object.__new__(BacktestEngine)
         self._regimes = RegimeDetector()
         self._router = StrategyRouter()
 
@@ -68,7 +66,7 @@ class StrategyRuntime:
             close_prices = close_prices[available]
         if close_prices.empty:
             return StrategyDecision("BLOCKED", {}, ("NO_DATA",))
-        signals = self._signals._generate_signals(close_prices, strategy)
+        signals = generate_signals(close_prices, strategy)
         latest = signals.iloc[-1].fillna(0).clip(0, 1)
         active = latest[latest > 0]
         if active.empty:

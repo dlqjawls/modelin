@@ -194,3 +194,9 @@ def test_provider_contract_is_owned_by_ports():
     for name in ("krx_provider.py", "us_provider.py", "crypto_provider.py"):
         provider = (BACKEND / "data" / "providers" / name).read_text(encoding="utf-8")
         assert "from ports.research_provider import BaseProvider" in provider
+
+
+def test_strategy_runtime_does_not_depend_on_backtest_engine():
+    source = (BACKEND / "core" / "strategy_runtime.py").read_text(encoding="utf-8")
+    assert "BacktestEngine" not in source
+    assert "_generate_signals" not in source

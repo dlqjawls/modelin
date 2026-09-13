@@ -4,6 +4,7 @@ from dataclasses import dataclass
 import pandas as pd
 
 from core.backtester import BacktestConfig, BacktestEngine
+from core.strategy_signals import generate_signals
 
 
 @dataclass(frozen=True)
@@ -39,7 +40,7 @@ def compare_strategies(opens: pd.DataFrame, closes: pd.DataFrame, *, symbols: li
     for strategy in candidates:
         config = BacktestConfig(symbols=symbols, market=market, strategy=strategy,
                                 initial_capital=initial_capital)
-        signals = engine._generate_signals(closes, strategy)
+        signals = generate_signals(closes, strategy)
         result = engine._event_backtest(opens.iloc[split:], closes.iloc[split:], signals.iloc[split:], config)
         score = result.cagr + (0.05 * result.sharpe_ratio) - (0.5 * abs(result.max_drawdown))
         results.append(StrategyScore(strategy, result.total_return, result.cagr,

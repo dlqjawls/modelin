@@ -4,6 +4,8 @@ from dataclasses import dataclass, field
 import numpy as np
 import pandas as pd
 
+from core.strategy_signals import SUPPORTED_STRATEGIES, generate_signals
+
 ANNUALIZATION = {"krx": 252, "us": 252, "crypto": 365}
 SUPPORTED_STRATEGIES = {"equal_weight", "momentum", "moving_average", "rsi", "bollinger_bands"}
 
@@ -49,7 +51,12 @@ class BacktestEngine:
         self._validate_config(config)
         if opens.empty or closes.empty:
             raise ValueError("사용 가능한 가격 데이터가 없습니다.")
-        return self._event_backtest(opens, closes, self._generate_signals(closes, config.strategy), config)
+        return self._event_backtest(opens, closes, generate_signals(closes, config.strategy), config)
+
+    @staticmethod
+    def _generate_signals(prices, strategy):
+        """Compatibility wrapper for callers migrating to strategy_signals."""
+        return generate_signals(prices, strategy)
 
     @staticmethod
     def _validate_config(config):
@@ -65,59 +72,6 @@ class BacktestEngine:
             raise ValueError("거래비용은 음수일 수 없습니다.")
         if config.quantity_step <= 0:
             raise ValueError("quantity_step은 양수여야 합니다.")
-
-    def _generate_signals(self, prices, strategy):
-        kind = strategy.get("type", "equal_weight")
-        if kind == "equal_weight":
-            return pd.DataFrame(1.0, index=prices.index, columns=prices.columns)
-        if kind == "momentum":
-            lookback = int(strategy.get("lookback", 20))
-            if lookback < 1:
-                raise ValueError("lookback은 1 이상이어야 합니다.")
-            return (prices.pct_change(lookback) > 0).astype(float)
-        if kind == "moving_average":
-            short, long = int(strategy.get("short_window", 20)), int(strategy.get("long_window", 60))
-            if short < 1 or short >= long:
-                raise ValueError("short_window은 long_window보다 작아야 합니다.")
-            result = pd.DataFrame(0.0, index=prices.index, columns=prices.columns)
-            for symbol in prices:
-                # The fast average becomes valid after its own window. Requiring
-                # the slow window here makes the valid default (20/60) fail.
-                fast = prices[symbol].rolling(short, min_periods=short).mean()
-                slow = prices[symbol].rolling(long, min_periods=long).mean()
-                result[symbol] = (fast > slow).astype(float)
-            return result
-        if kind == "rsi":
-            period = int(strategy.get("period", 14))
-            oversold, overbought = float(strategy.get("oversold", 30)), float(strategy.get("overbought", 70))
-            if period < 2 or not 0 < oversold < overbought < 100:
-                raise ValueError("RSI 설정이 올바르지 않습니다.")
-            result = pd.DataFrame(0.0, index=prices.index, columns=prices.columns)
-            for symbol in prices:
-                rsi = self._calc_rsi(prices[symbol], period)
-                state = pd.Series(np.nan, index=prices.index)
-                state[rsi < oversold], state[rsi > overbought] = 1.0, 0.0
-                result[symbol] = state.ffill().fillna(0.0)
-            return result
-        window, num_std = int(strategy.get("window", 20)), float(strategy.get("num_std", 2))
-        if window < 2 or num_std <= 0:
-            raise ValueError("볼린저 설정이 올바르지 않습니다.")
-        result = pd.DataFrame(0.0, index=prices.index, columns=prices.columns)
-        for symbol in prices:
-            ma = prices[symbol].rolling(window, min_periods=window).mean()
-            std = prices[symbol].rolling(window, min_periods=window).std()
-            state = pd.Series(np.nan, index=prices.index)
-            state[prices[symbol] < ma - num_std * std] = 1.0
-            state[prices[symbol] > ma + num_std * std] = 0.0
-            result[symbol] = state.ffill().fillna(0.0)
-        return result
-
-    @staticmethod
-    def _calc_rsi(series, period=14):
-        delta = series.diff()
-        gain = delta.clip(lower=0).ewm(alpha=1 / period, adjust=False, min_periods=period).mean()
-        loss = -delta.clip(upper=0).ewm(alpha=1 / period, adjust=False, min_periods=period).mean()
-        return 100 - 100 / (1 + gain / loss.replace(0, np.nan))
 
     @staticmethod
     def _is_rebalance(date, index, period):
