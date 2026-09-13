@@ -15,3 +15,5 @@ The frontend keeps HTTP concerns in `src/services` and page rendering in `src/co
 - `App.tsx`: navigation shell and lazy page loading. Individual pages are loaded with `React.lazy` so research and chart dependencies do not inflate the initial bundle.
 
 Components may call service modules and render their results. Service modules do not import components or application state. New API groups should be added to a focused service module and re-exported from `services/api.ts` only when compatibility requires it.
+
+The repository-level `scripts/check-frontend-architecture.mjs` verifies these import boundaries without starting the frontend.
