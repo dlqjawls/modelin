@@ -8,11 +8,11 @@
 4. [구현 작업과 검증 기준](trading-implementation-plan.md): 구현 순서와 계산·장애 수용 테스트.
 5. [모의 운용 설정 예시](examples/paper-deployment.json): 계약 설명용 가상 계좌 설정.
 
-현재 구현 범위: 백테스트 체결 시점 교정, 공통 전략 validator/runtime, SQLite Paper 원장, 주문 상태·outbox·복구 journal, 계좌 lease/fencing, 위험 한도, v1 운영 API, 시장 데이터 표준화, React Paper 운영 화면, fail-closed broker port, 그리고 application 계층의 계좌·deployment·paper cycle·조회·context 서비스.
+현재 구현 범위: 백테스트 체결 시점 교정, 공통 전략 validator/runtime, SQLite Paper 원장, 주문 상태·outbox·복구 journal, 계좌 lease/fencing, 위험 한도, v1 운영 API, 시장 데이터 표준화, React Paper 운영 화면, fail-closed broker port, 그리고 application 계층의 계좌·deployment·paper cycle·조회·context 서비스. 외부 provider는 `application/container.py`에서 주입하고, paper runtime은 `workers/paper_runtime.py`에서 조립한다.
 
 ## 구조 규칙
 
-`backend/application/ARCHITECTURE.md`에 정의한 의존 방향을 따른다. `core`는 API나 application을 import하지 않으며, `adapters`는 외부 시스템과 ports를 연결한다. 이 규칙은 `backend/tests/test_architecture.py`에서 자동으로 검사한다.
+`backend/application/ARCHITECTURE.md`에 정의한 의존 방향을 따른다. `core`는 API나 application을 import하지 않으며, application service는 외부 adapter를 직접 생성하지 않는다. `adapters`는 외부 시스템과 ports를 연결하고, 실행용 runtime 조립은 workers에 둔다. 이 규칙은 `backend/tests/test_architecture.py`에서 자동으로 검사한다.
 
 검증 명령:
 
