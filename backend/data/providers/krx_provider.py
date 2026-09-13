@@ -11,12 +11,8 @@ import pandas as pd
 import requests
 import FinanceDataReader as fdr
 
-from data.providers.base import (
-    AssetInfo,
-    BaseProvider,
-    FundamentalData,
-    Market,
-)
+from core.contracts import AssetInfo, FundamentalData, Market
+from ports.research_provider import BaseProvider
 from data.cache import cache
 
 # 기본 주요 종목 리스트 (네트워크 장애 대비 fallback)

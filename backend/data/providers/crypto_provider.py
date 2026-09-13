@@ -10,12 +10,8 @@ from datetime import datetime
 import pandas as pd
 import ccxt
 
-from data.providers.base import (
-    AssetInfo,
-    BaseProvider,
-    FundamentalData,
-    Market,
-)
+from core.contracts import AssetInfo, FundamentalData, Market
+from ports.research_provider import BaseProvider
 from data.cache import cache
 from config import settings
 

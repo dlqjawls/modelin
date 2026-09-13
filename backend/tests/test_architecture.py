@@ -186,3 +186,11 @@ def test_paper_snapshot_uses_market_data_port():
     source = (BACKEND / "application" / "market_snapshot.py").read_text(encoding="utf-8")
     assert "from ports.market_data import PaperMarketDataAdapter" in source
     assert "data_adapter: PaperMarketDataAdapter" in source
+
+
+def test_provider_contract_is_owned_by_ports():
+    source = (BACKEND / "data" / "providers" / "base.py").read_text(encoding="utf-8")
+    assert "class BaseProvider" not in source
+    for name in ("krx_provider.py", "us_provider.py", "crypto_provider.py"):
+        provider = (BACKEND / "data" / "providers" / name).read_text(encoding="utf-8")
+        assert "from ports.research_provider import BaseProvider" in provider
