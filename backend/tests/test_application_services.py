@@ -58,7 +58,7 @@ class ApplicationServiceTests(unittest.TestCase):
             with patch.object(settings, "PAPER_WORKER_ENABLED", False), patch.object(settings, "PAPER_DEPLOYMENT_FILE", ""):
                 async with lifespan(app):
                     self.assertEqual(app.state.paper_worker, "disabled")
-                    self.assertFalse(hasattr(app.state, "paper_worker_task"))
+                    self.assertIsNone(app.state.paper_worker_task)
 
         asyncio.run(scenario())
 

@@ -53,9 +53,11 @@ async def lifespan(app: FastAPI):
         worker_task = asyncio.create_task(run_paper_worker(
             deployment, max(60, settings.PAPER_WORKER_INTERVAL_SECONDS),
             deployment_loader=current_deployment, status_callback=record_worker_status))
+        app.state.paper_worker_task = worker_task
         app.state.paper_worker = "running"
         print(f"[Modelin] paper worker started: {deployment['id']}")
     else:
+        app.state.paper_worker_task = None
         app.state.paper_worker = "disabled"
     # Startup
     print(f"[Modelin] {settings.APP_NAME} v{settings.APP_VERSION} server started")
@@ -64,6 +66,7 @@ async def lifespan(app: FastAPI):
     if worker_task:
         worker_task.cancel()
         await asyncio.gather(worker_task, return_exceptions=True)
+        app.state.paper_worker_task = None
         print("[Modelin] paper worker stopped")
     # Shutdown
     print(f"[Modelin] {settings.APP_NAME} server stopped")
