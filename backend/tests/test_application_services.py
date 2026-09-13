@@ -15,7 +15,7 @@ from workers.paper_worker import execute_from_market_data
 from workers.paper_worker import serve
 from main import app, lifespan
 from config import settings
-from data.contracts import Bar
+from core.contracts import Bar
 
 
 class FakeCalendar:

@@ -18,7 +18,7 @@ from adapters.brokers.registry import BrokerRegistry
 from adapters.brokers.kis import KISBrokerAdapter, KISConfig
 from core.order_state import OrderState, OrderStateMachine
 from core.scheduler import PaperScheduler
-from data.contracts import Bar, DataSnapshot
+from core.contracts import Bar, DataSnapshot
 from datetime import datetime, timezone
 from core.strategy_runtime import StrategyRuntime, validate_strategy
 from core.order_planner import OrderPlanner

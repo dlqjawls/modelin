@@ -2,7 +2,7 @@
 from datetime import datetime
 from typing import Protocol
 
-from data.contracts import DataSnapshot
+from core.contracts import DataSnapshot
 
 
 class MarketDataAdapter(Protocol):

@@ -24,6 +24,7 @@ def main() -> int:
         "api": {"core", "data", "adapters"},
         "adapters": {"api", "workers"},
         "application": {"api", "frontend"},
+        "ports": {"data", "adapters", "api", "workers"},
     }
     violations = []
     for layer, forbidden in rules.items():

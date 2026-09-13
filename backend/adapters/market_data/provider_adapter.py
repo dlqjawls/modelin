@@ -3,7 +3,7 @@ from datetime import datetime, timedelta, timezone
 
 import pandas as pd
 
-from data.contracts import DataSnapshot
+from core.contracts import DataSnapshot
 from data.normalizer import normalize_daily_frame
 
 

@@ -5,7 +5,7 @@ from uuid import uuid4
 
 import pandas as pd
 
-from data.contracts import Bar, DataSnapshot
+from core.contracts import Bar, DataSnapshot
 
 
 def normalize_daily_frame(frame: pd.DataFrame, *, instrument_id: str, source: str,

@@ -34,6 +34,12 @@ def test_adapters_do_not_depend_on_api_or_workers():
     assert not violations, f"adapter imports delivery modules: {violations}"
 
 
+def test_ports_do_not_depend_on_provider_implementations():
+    forbidden = {"data", "adapters", "api", "workers"}
+    violations = [(path, module) for path, module in _imports_under("ports") if module in forbidden]
+    assert not violations, f"ports import infrastructure or delivery modules: {violations}"
+
+
 def test_application_does_not_depend_on_api_or_frontend():
     forbidden = {"api", "frontend"}
     violations = [(path, module) for path, module in _imports_under("application") if module in forbidden]
