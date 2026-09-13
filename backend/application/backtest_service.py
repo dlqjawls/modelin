@@ -10,7 +10,14 @@ class BacktestService:
         self.market_data = market_data
         self.engine = engine or BacktestEngine()
 
-    async def run(self, config: BacktestConfig):
+    async def run(self, *, symbols, market, start_date, end_date, strategy,
+                  initial_capital, commission_rate, slippage_rate, rebalance_period):
+        config = BacktestConfig(
+            symbols=symbols, market=market, start_date=start_date, end_date=end_date,
+            strategy=strategy, initial_capital=initial_capital,
+            commission_rate=commission_rate, slippage_rate=slippage_rate,
+            rebalance_period=rebalance_period,
+        )
         return await self.engine.run(config)
 
     async def compare(self, *, market, symbols, start_date, end_date,

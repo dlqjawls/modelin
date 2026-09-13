@@ -75,7 +75,7 @@ def test_backtest_api_does_not_construct_providers_or_engine():
     path = BACKEND / "api" / "backtest.py"
     imports = list(_imports_under("api"))
     violations = [(source, module) for source, module in imports
-                  if source == path and module in {"data", "adapters"}]
+                  if source == path and module in {"core", "data", "adapters"}]
     assert not violations, f"backtest API constructs infrastructure: {violations}"
 
 

@@ -4,7 +4,6 @@ Modelin - 백테스팅 API 라우터
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
-from core.backtester import BacktestConfig
 from application.container import get_container
 
 router = APIRouter(prefix="/api/backtest", tags=["Backtest"])
@@ -63,19 +62,13 @@ class StrategyScoreResponse(BaseModel):
 async def run_backtest(request: BacktestRequest):
     """백테스팅 실행"""
     try:
-        config = BacktestConfig(
-            symbols=request.symbols,
-            market=request.market,
-            start_date=request.start_date,
-            end_date=request.end_date,
-            strategy=request.strategy,
-            initial_capital=request.initial_capital,
-            commission_rate=request.commission_rate,
-            slippage_rate=request.slippage_rate,
+        result = await _backtests.run(
+            symbols=request.symbols, market=request.market,
+            start_date=request.start_date, end_date=request.end_date,
+            strategy=request.strategy, initial_capital=request.initial_capital,
+            commission_rate=request.commission_rate, slippage_rate=request.slippage_rate,
             rebalance_period=request.rebalance_period,
         )
-
-        result = await _backtests.run(config)
 
         return BacktestResponse(
             total_return=result.total_return,
