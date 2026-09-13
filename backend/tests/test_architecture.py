@@ -28,6 +28,11 @@ def test_core_does_not_construct_market_data_providers():
     assert not violations, f"core imports market data infrastructure: {violations}"
 
 
+def test_core_does_not_own_persistence_implementations():
+    violations = [(path, module) for path, module in _imports_under("core") if module == "sqlite3"]
+    assert not violations, f"core imports persistence implementation: {violations}"
+
+
 def test_adapters_do_not_depend_on_api_or_workers():
     forbidden = {"api", "workers"}
     violations = [(path, module) for path, module in _imports_under("adapters") if module in forbidden]

@@ -16,7 +16,7 @@ from application.paper_decision import PaperDecisionService
 from application.paper_execution import PaperExecutionService
 from application.market_snapshot import PaperMarketSnapshotService
 from core.scheduler import PaperScheduler
-from core.execution_journal import ExecutionJournal
+from data.persistence.execution_journal import ExecutionJournal
 from core.risk_guard import RiskGuard
 from core.strategy_comparator import compare_strategies
 from application.paper_cycle import PaperCycleRequest, PaperCycleService

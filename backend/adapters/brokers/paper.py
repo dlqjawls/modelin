@@ -1,7 +1,7 @@
 """Broker-port wrapper around the persistent local paper broker."""
 from decimal import Decimal
 
-from core.persistent_paper_broker import PersistentPaperBroker
+from data.persistence.persistent_paper_broker import PersistentPaperBroker
 from ports.broker import BrokerCapabilities, OrderRequest
 
 

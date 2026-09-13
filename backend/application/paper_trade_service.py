@@ -1,7 +1,7 @@
 """Application service for the legacy immediate-fill paper trading API."""
 from decimal import Decimal
 
-from core.persistent_paper_broker import PersistentPaperBroker
+from data.persistence.persistent_paper_broker import PersistentPaperBroker
 
 
 class PaperTradeService:

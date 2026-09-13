@@ -1,5 +1,5 @@
 """Application queries for account state and paper broker history."""
-from core.persistent_paper_broker import PersistentPaperBroker, account_database_path
+from data.persistence.persistent_paper_broker import PersistentPaperBroker, account_database_path
 
 
 class AccountQueryService:

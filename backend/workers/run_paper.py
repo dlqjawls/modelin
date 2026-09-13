@@ -16,7 +16,7 @@ from application.paper_cycle import PaperCycleRequest
 from workers.paper_runtime import build_paper_runtime
 from application.container import get_container
 from core.strategy_runtime import validate_strategy
-from core.execution_journal import ExecutionJournal
+from data.persistence.execution_journal import ExecutionJournal
 from workers.paper_worker import recover_pending_submissions
 
 logger = logging.getLogger("modelin.paper-runner")

@@ -16,7 +16,7 @@ from data.providers.base import Market
 from data.providers.krx_provider import KRXProvider
 from data.providers.us_provider import USProvider
 from data.providers.crypto_provider import CryptoProvider
-from core.operations_store import OperationsStore
+from data.persistence.operations_store import OperationsStore
 
 from application.deployment_service import DeploymentService
 from application.account_service import AccountService

@@ -1,5 +1,5 @@
 """Read-only broker capability queries."""
-from core.persistent_paper_broker import account_database_path
+from data.persistence.persistent_paper_broker import account_database_path
 
 
 class BrokerQueryService:

@@ -20,7 +20,7 @@ def imports_under(directory: str):
 
 def main() -> int:
     rules = {
-        "core": {"api", "application", "workers", "data", "adapters"},
+        "core": {"api", "application", "workers", "data", "adapters", "sqlite3"},
         "api": {"core", "data", "adapters"},
         "adapters": {"api", "workers"},
         "application": {"api", "frontend"},
