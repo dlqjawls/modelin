@@ -7,6 +7,8 @@ import asyncio
 import json
 import sys
 
+import httpx
+
 from adapters.brokers.kis import KISBrokerAdapter, KISConfig
 from adapters.market_data.fred_macro import FredMacroContext
 from config import settings
@@ -28,6 +30,8 @@ async def _check_kis(market: str) -> dict:
     try:
         snapshot = await KISBrokerAdapter(_kis_config(market)).account_snapshot()
         return {"status": "ok", "source": snapshot.get("source"), "cash_present": bool(snapshot.get("cash_present"))}
+    except httpx.HTTPStatusError as exc:
+        return {"status": "error", "error": type(exc).__name__, "http_status": exc.response.status_code}
     except Exception as exc:  # noqa: BLE001 - report provider failure without secrets
         return {"status": "error", "error": type(exc).__name__}
 

@@ -23,6 +23,14 @@ $env:PYTHONPATH = (Join-Path (Get-Location) 'backend')
 python scripts/verify-integrations.py
 ```
 
+개발 환경 의존성과 회귀 테스트는 다음으로 준비하고 실행한다.
+
+```powershell
+py -m pip install -r backend/requirements-dev.txt
+$env:PYTHONPATH = (Join-Path (Get-Location) 'backend')
+py -m pytest -q
+```
+
 세 항목이 모두 `"status": "ok"`이면 현재 설정으로 읽기 연결이 확인된 것이다. KIS 자격증명이 없으면 해당 시장은 `missing_credentials`로 표시되며, FRED API 키가 없어도 공개 CSV 경로가 자동으로 사용된다.
 
 ## 중지와 안전 규칙
