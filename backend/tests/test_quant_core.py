@@ -466,6 +466,23 @@ class QuantCoreTests(unittest.TestCase):
         self.assertEqual(calls[-1].url.path, "/uapi/overseas-stock/v1/trading/order")
         self.assertEqual(calls[-1].headers["tr_id"], "VTTT1002U")
 
+    def test_kis_adapters_share_token_cache_across_markets(self):
+        calls = []
+        def handler(request):
+            calls.append(request)
+            if request.url.path == "/oauth2/tokenP":
+                return httpx.Response(200, json={"access_token": "shared", "rt_cd": "0"})
+            return httpx.Response(200, json={"rt_cd": "0", "output1": [], "output2": [{}]})
+        async def scenario():
+            KISBrokerAdapter._TOKEN_CACHE.clear()
+            async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+                domestic = KISBrokerAdapter(KISConfig("shared-key", "secret", "12345678"), client)
+                overseas = KISBrokerAdapter(KISConfig("shared-key", "secret", "12345678", market="us"), client)
+                await domestic.account_snapshot()
+                await overseas.account_snapshot()
+        asyncio.run(scenario())
+        self.assertEqual(sum(1 for request in calls if request.url.path == "/oauth2/tokenP"), 1)
+
     def test_kis_order_events_polls_daily_orders_with_cursor(self):
         def handler(request):
             if request.url.path == "/oauth2/tokenP":

@@ -7,6 +7,7 @@ broker registry after a separate review.
 from dataclasses import dataclass
 from decimal import Decimal
 from datetime import date
+import time
 from typing import Any
 
 import httpx
@@ -70,11 +71,16 @@ class KISBrokerAdapter:
                 await client.aclose()
 
     async def _token(self):
+        cache_key = self.config.app_key
+        cached = self._TOKEN_CACHE.get(cache_key)
+        if cached and cached[1] > time.monotonic():
+            self._access_token = cached[0]
         if not self._access_token:
             payload = await self._request("POST", "/oauth2/tokenP", json={
                 "grant_type": "client_credentials", "appkey": self.config.app_key, "appsecret": self.config.app_secret,
             })
             self._access_token = payload["access_token"]
+            self._TOKEN_CACHE[cache_key] = (self._access_token, time.monotonic() + 23 * 60 * 60)
         return self._access_token
 
     async def _hashkey(self, body):
@@ -314,3 +320,4 @@ class KISBrokerAdapter:
                                       headers=headers, json=body)
         return {"broker_order_id": payload.get("output", {}).get("ODNO", broker_order_id),
                 "status": "cancel_requested", "raw": payload}
+    _TOKEN_CACHE: dict[str, tuple[str, float]] = {}
