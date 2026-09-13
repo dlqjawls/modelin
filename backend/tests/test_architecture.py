@@ -95,6 +95,12 @@ def test_screener_api_does_not_construct_core_engine():
     assert not violations, f"screener API constructs core engine: {violations}"
 
 
+def test_api_layer_has_no_direct_domain_or_infrastructure_imports():
+    forbidden = {"core", "data", "adapters"}
+    violations = [(path, module) for path, module in _imports_under("api") if module in forbidden]
+    assert not violations, f"API layer imports domain/infrastructure directly: {violations}"
+
+
 def test_application_container_shares_market_data_service_with_research_services():
     from application.container import get_container
 
