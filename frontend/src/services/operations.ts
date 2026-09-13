@@ -1,8 +1,9 @@
 import type { AxiosRequestConfig } from 'axios';
-import type { AccountSnapshotResponse, Deployment, DiagnosticsResponse, LiveDiagnosticsResponse, PaperAccount } from '../contracts/operations';
+import type { AccountSnapshotResponse, Deployment, DiagnosticsResponse, HealthResponse, LiveDiagnosticsResponse, PaperAccount } from '../contracts/operations';
 import { apiClient } from './client';
 
 export const operationsApi = {
+  health: () => apiClient.get<HealthResponse>('/api/health'),
   accounts: () => apiClient.get<PaperAccount[]>('/api/v1/accounts'),
   deployments: () => apiClient.get<Deployment[]>('/api/v1/deployments'),
   createPaperAccount: (body: { name: string; market: string; currency: string; initial_cash: string }) =>

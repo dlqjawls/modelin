@@ -1,7 +1,8 @@
 /** Backward-compatible facade for the frontend API services. */
-import { apiClient, healthCheck } from './client';
+import { apiClient } from './client';
+import { operationsApi } from './operations';
 
-export { getApiErrorMessage } from './client';
+export { getApiErrorMessage } from './errors';
 export { operationsApi } from './operations';
 export { marketApi, screenerApi, backtestApi, portfolioApi } from './research';
 export type {
@@ -10,5 +11,5 @@ export type {
 } from './research';
 export type { AccountSnapshotResponse, Deployment, DiagnosticsResponse, HealthResponse, LiveDiagnosticsResponse, PaperAccount } from '../contracts/operations';
 
-export { healthCheck };
+export const healthCheck = operationsApi.health;
 export { apiClient as default };

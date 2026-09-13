@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Activity, RefreshCw } from 'lucide-react';
-import { getApiErrorMessage, healthCheck } from '../services/client';
+import { getApiErrorMessage } from '../services/errors';
 import { operationsApi } from '../services/operations';
 import type { DiagnosticsResponse, PaperAccount, AccountSnapshotResponse, Deployment } from '../contracts/operations';
 
@@ -18,7 +18,7 @@ export default function TradingPanel() {
     setLoading(true); setError(null);
     try {
       const response = await operationsApi.accounts();
-      const health = await healthCheck();
+      const health = await operationsApi.health();
       setWorkerState(health.data.paper_worker ?? 'unknown');
       const diagnosticResponse = await operationsApi.diagnostics();
       setDiagnostics(diagnosticResponse.data);

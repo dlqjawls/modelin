@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { RefreshCw, Settings } from 'lucide-react';
-import { getApiErrorMessage, healthCheck } from '../services/client';
+import { getApiErrorMessage } from '../services/errors';
 import { operationsApi } from '../services/operations';
 import type { DiagnosticsResponse, HealthResponse, LiveDiagnosticsResponse } from '../contracts/operations';
 
@@ -12,7 +12,7 @@ export default function SettingsPanel() {
   const [loading, setLoading] = useState(false);
   const refresh = useCallback(async () => {
     setLoading(true); setError('');
-    try { const [healthResponse, diagnosticResponse] = await Promise.all([healthCheck(), operationsApi.diagnostics()]); setHealth(healthResponse.data); setDiagnostics(diagnosticResponse.data); }
+    try { const [healthResponse, diagnosticResponse] = await Promise.all([operationsApi.health(), operationsApi.diagnostics()]); setHealth(healthResponse.data); setDiagnostics(diagnosticResponse.data); }
     catch (cause) { setError(getApiErrorMessage(cause, '진단 정보를 불러오지 못했습니다.')); }
     finally { setLoading(false); }
   }, []);

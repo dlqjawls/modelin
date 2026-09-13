@@ -2,8 +2,9 @@
 
 The frontend keeps HTTP concerns in `src/services` and page rendering in `src/components`.
 
-- `services/client.ts`: shared Axios client, health check, and API error normalization.
-- `services/operations.ts`: account, deployment, snapshot, command, and diagnostics APIs.
+- `services/client.ts`: shared Axios transport client.
+- `services/operations.ts`: health, account, deployment, snapshot, command, and diagnostics APIs.
+- `services/errors.ts`: shared API error normalization.
 - `services/research.ts`: market data, screener, backtest, and portfolio API calls.
 - `services/api.ts`: backward-compatible facade for consumers that still use the old import path.
 - `contracts/operations.ts`: shared operations response contracts.
