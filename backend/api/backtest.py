@@ -5,10 +5,16 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from core.backtester import BacktestEngine, BacktestConfig, BacktestResult
+from core.strategy_comparator import compare_strategies
+import pandas as pd
+from data.providers.krx_provider import KRXProvider
+from data.providers.us_provider import USProvider
+from data.providers.crypto_provider import CryptoProvider
 
 router = APIRouter(prefix="/api/backtest", tags=["Backtest"])
 
 _engine = BacktestEngine()
+_providers = {"krx": KRXProvider, "us": USProvider, "crypto": CryptoProvider}
 
 
 class BacktestRequest(BaseModel):
@@ -37,6 +43,25 @@ class BacktestResponse(BaseModel):
     equity_curve: list[dict]
     monthly_returns: list[dict]
     benchmark_comparison: dict | None = None
+
+
+class CompareRequest(BaseModel):
+    symbols: list[str]
+    market: str = "krx"
+    start_date: str
+    end_date: str
+    strategies: list[dict] | None = None
+    initial_capital: float = 10_000_000
+
+
+class StrategyScoreResponse(BaseModel):
+    strategy: dict
+    total_return: float
+    cagr: float
+    sharpe_ratio: float
+    max_drawdown: float
+    total_trades: int
+    score: float
 
 
 @router.post("/run", response_model=BacktestResponse)
@@ -72,3 +97,26 @@ async def run_backtest(request: BacktestRequest):
         )
     except Exception as e:
         raise HTTPException(500, f"백테스팅 실패: {str(e)}")
+
+
+@router.post("/compare", response_model=list[StrategyScoreResponse])
+async def compare_backtests(request: CompareRequest):
+    """Compare candidates on an out-of-sample holdout; never auto-deploys a winner."""
+    if request.market not in _providers or not request.symbols:
+        raise HTTPException(422, "지원하는 시장과 종목을 입력해주세요.")
+    provider = _providers[request.market]()
+    frames = {}
+    for symbol in dict.fromkeys(request.symbols):
+        frame = await provider.get_ohlcv(symbol, request.start_date, request.end_date, "1d")
+        if not frame.empty and {"open", "close"}.issubset(frame.columns):
+            frames[symbol] = frame[["open", "close"]].copy()
+    if not frames:
+        raise HTTPException(422, "전략 비교에 사용할 가격 데이터가 없습니다.")
+    opens = pd.DataFrame({symbol: frame["open"] for symbol, frame in frames.items()}).sort_index().ffill()
+    closes = pd.DataFrame({symbol: frame["close"] for symbol, frame in frames.items()}).sort_index().ffill()
+    try:
+        scores = compare_strategies(opens, closes, symbols=list(frames), market=request.market,
+                                    strategies=request.strategies, initial_capital=request.initial_capital)
+    except (ValueError, KeyError) as exc:
+        raise HTTPException(422, f"전략 비교 실패: {exc}") from exc
+    return [StrategyScoreResponse(**score.__dict__) for score in scores]

@@ -100,6 +100,16 @@ export interface BacktestResult {
   monthly_returns: { date: string; return: number }[];
 }
 
+export interface StrategyScore {
+  strategy: Record<string, unknown>;
+  total_return: number;
+  cagr: number;
+  sharpe_ratio: number;
+  max_drawdown: number;
+  total_trades: number;
+  score: number;
+}
+
 export interface PortfolioOptimizationResult {
   weights: Record<string, number>;
   expected_return: number;
@@ -145,6 +155,8 @@ export const screenerApi = {
 export const backtestApi = {
   run: (config: BacktestConfig) =>
     api.post<BacktestResult>('/api/backtest/run', config),
+  compare: (config: Omit<BacktestConfig, 'strategy' | 'commission_rate' | 'slippage_rate' | 'rebalance_period'> & { strategies?: Record<string, unknown>[] }) =>
+    api.post<StrategyScore[]>('/api/backtest/compare', config),
 };
 
 export const portfolioApi = {
