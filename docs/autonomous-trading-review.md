@@ -19,11 +19,11 @@
 | 코인 데이터 | data/providers/crypto_provider.py | ccxt Upbit 시세 조회, 목록은 원화마켓. 주문 호출 없음 |
 | 스크리닝 | core/screener.py | 조건 필터만 존재. 수집 대상 앞 100개 제한, 실패 은폐 |
 | 전략 검증 | core/backtester.py | 계산 오류가 있는 종가 기반 엔진. 수량·현금·체결 원장 없음 |
-| 포트폴리오 | api/portfolio.py:34 | HTTP 501 반환 |
-| 모의·실매매 | api/trading.py:22,28 | 모의 주문·포지션 API 모두 HTTP 501, 실주문 구현 없음 |
-| 지속 실행 | main.py | API 서버만 실행. 전략 스케줄러·복구 워커 없음 |
+| 포트폴리오 | api/portfolio.py:34 | 가격 기반 배분 API와 운영 화면 연결 |
+| 모의·실매매 | api/trading.py, core/persistent_paper_broker.py | Paper 주문·원장·운영 명령 연결, live는 차단 |
+| 지속 실행 | main.py, workers/run_paper.py | Paper 전략 워커·복구·오류 상태 저장 |
 | 저장 | data/database.py, schema.sql | 클라이언트와 테이블 정의만 있고 앱에서 클라이언트 호출 없음 |
-| 운영 화면 | frontend/src/App.tsx | 포트폴리오·자동매매·설정은 Coming Soon |
+| 운영 화면 | frontend/src/App.tsx | 포트폴리오·자동매매·설정·실시간 연결 진단 연결 |
 | 자산 곡선 | frontend/src/components/Dashboard.tsx | 삼성전자 가격을 초기자금에 비례시킨 예시 곡선. 계좌 평가액 아님 |
 
 ## 확인한 문제와 영향
