@@ -33,6 +33,7 @@ _queries = _container.operations_queries
 _account_queries = _container.account_queries
 _broker_queries = _container.broker_queries
 _idempotency = _container.idempotency
+_system_queries = _container.system_queries
 
 
 class PaperAccountRequest(BaseModel):
@@ -87,19 +88,7 @@ async def capabilities(account_id: str):
 @router.get("/diagnostics")
 async def diagnostics():
     """Safe readiness diagnostics; secret values are never returned."""
-    return {
-        "paper_worker": "configured" if settings.PAPER_WORKER_ENABLED and settings.PAPER_DEPLOYMENT_FILE else "disabled",
-        "sources": {
-            "kis_paper": "configured" if all((settings.KIS_APP_KEY, settings.KIS_APP_SECRET, settings.KIS_ACCOUNT_NO)) else "missing_credentials",
-            "kis_overseas_paper": "configured" if all((settings.KIS_APP_KEY, settings.KIS_APP_SECRET, settings.KIS_ACCOUNT_NO)) else "missing_credentials",
-            "rss": "configured" if settings.NEWS_FEEDS else "not_configured",
-            "opendart": "configured" if settings.OPENDART_API_KEY else "missing_api_key",
-            "sec_edgar": "configured" if settings.SEC_USER_AGENT and settings.SEC_CIKS else "missing_user_agent_or_cik",
-            "fred_macro": "configured_public_csv" if not settings.FRED_API_KEY else "configured_api",
-        },
-        "live_trading": "disabled_by_default",
-        "crypto_trading": "paused",
-    }
+    return _system_queries.diagnostics()
 
 
 @router.get("/diagnostics/live")
@@ -223,9 +212,6 @@ async def live_health():
 @router.get("/health/ready")
 async def ready_health():
     try:
-        # Opening the local repository verifies that the worker can use its
-        # configured persistence path without placing an order.
-        OperationsStore(settings.PAPER_DB_PATH)
-        return {"status": "ready", "mode": "paper_only"}
+        return _system_queries.ready()
     except Exception as exc:
         raise HTTPException(503, "저장소가 준비되지 않았습니다.") from exc
