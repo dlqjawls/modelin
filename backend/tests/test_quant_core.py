@@ -38,6 +38,7 @@ from core.live_gate import LiveTradingGate
 from adapters.market_data.news_feed import RSSNewsContext
 from adapters.market_data.official_sources import OpenDartClient, SecSubmissionsClient
 from adapters.market_data.fred_macro import FredMacroContext
+from adapters.brokers.kis_websocket import parse_execution_message
 from api.v1 import create_deployment, create_paper_account, require_api_key
 from tempfile import TemporaryDirectory
 
@@ -510,6 +511,12 @@ class QuantCoreTests(unittest.TestCase):
         subscription = asyncio.run(scenario())
         self.assertIn("31000", subscription["url"])
         self.assertEqual(subscription["subscriptions"][0]["tr_id"], "H0STCNI0")
+
+    def test_kis_execution_message_parser_handles_heartbeat_and_fill(self):
+        self.assertEqual(parse_execution_message('{"header":{"tr_id":"PINGPONG"}}'), {"type": "heartbeat"})
+        event = parse_execution_message("0|H0STCNI0|20|cust^order-1^fill-1^005930^1")
+        self.assertEqual(event["event_id"], "fill-1")
+        self.assertEqual(event["broker_order_id"], "order-1")
 
     def test_live_gate_fails_closed_until_every_condition_is_explicit(self):
         paper_capabilities = type("Capabilities", (), {"supports_live": False})()
