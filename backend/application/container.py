@@ -11,12 +11,14 @@ from adapters.brokers.registry import BrokerRegistry
 from core.operations_store import OperationsStore
 
 from application.deployment_service import DeploymentService
+from application.account_service import AccountService
 
 
 @dataclass(frozen=True)
 class ApplicationContainer:
     operations_store: OperationsStore
     broker_registry: BrokerRegistry
+    account_service: AccountService
     deployment_service: DeploymentService
 
 
@@ -26,5 +28,6 @@ def get_container() -> ApplicationContainer:
     return ApplicationContainer(
         operations_store=store,
         broker_registry=BrokerRegistry(),
+        account_service=AccountService(store),
         deployment_service=DeploymentService(store),
     )

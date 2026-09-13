@@ -3,9 +3,7 @@
 The first implementation is intentionally paper-only. Live broker adapters are
 not registered until an explicit venue integration is added and tested.
 """
-from datetime import datetime, timezone
 from typing import Literal
-from uuid import uuid4
 
 from fastapi import APIRouter, Depends, Header, HTTPException
 from pydantic import BaseModel, Field
@@ -27,6 +25,7 @@ router = APIRouter(prefix="/api/v1", tags=["Operations"], dependencies=[Depends(
 _container = get_container()
 _store = _container.operations_store
 _brokers = _container.broker_registry
+_accounts = _container.account_service
 _deployments = _container.deployment_service
 
 
@@ -62,11 +61,7 @@ async def create_paper_account(request: PaperAccountRequest, idempotency_key: st
         raise HTTPException(409, str(exc)) from exc
     if prior:
         return prior["response"]
-    account_id = str(uuid4())
-    account = {"id": account_id, "name": request.name, "mode": "paper", "market": request.market,
-               "currency": request.currency, "initial_cash": request.initial_cash,
-               "status": "READY", "created_at": datetime.now(timezone.utc).isoformat()}
-    result = _store.create_account(account)
+    result = _accounts.create_paper(request.model_dump())
     _store.save_idempotent_response(scope="anonymous", endpoint=endpoint, key=idempotency_key,
                                     payload=request.model_dump(), status_code=201, response=result)
     return result
