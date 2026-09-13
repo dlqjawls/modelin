@@ -31,7 +31,18 @@ async def _check_kis(market: str) -> dict:
         snapshot = await KISBrokerAdapter(_kis_config(market)).account_snapshot()
         return {"status": "ok", "source": snapshot.get("source"), "cash_present": bool(snapshot.get("cash_present"))}
     except httpx.HTTPStatusError as exc:
-        return {"status": "error", "error": type(exc).__name__, "http_status": exc.response.status_code}
+        detail = ""
+        try:
+            body = exc.response.json()
+            detail = body.get("msg1") or body.get("message") or body.get("error_description") or ""
+        except ValueError:
+            try:
+                body = json.loads(exc.response.content.decode("cp949"))
+                detail = body.get("msg1") or body.get("message") or body.get("error_description") or ""
+            except (UnicodeDecodeError, json.JSONDecodeError):
+                pass
+        return {"status": "error", "error": type(exc).__name__, "http_status": exc.response.status_code,
+                "provider_message": str(detail)[:200]}
     except Exception as exc:  # noqa: BLE001 - report provider failure without secrets
         return {"status": "error", "error": type(exc).__name__}
 
