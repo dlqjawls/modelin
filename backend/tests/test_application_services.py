@@ -1,0 +1,130 @@
+import asyncio
+import unittest
+from datetime import datetime, timezone
+from decimal import Decimal
+
+from application.market_snapshot import PaperMarketSnapshotService
+from application.paper_decision import PaperDecisionService
+from application.paper_execution import PaperExecutionService
+from data.contracts import Bar
+
+
+class FakeCalendar:
+    def __init__(self, open_market=True):
+        self.open_market = open_market
+
+    def is_trading_day(self, market, as_of):
+        return self.open_market
+
+
+class FakeSnapshot:
+    def __init__(self, bars):
+        self.bars = bars
+
+    def usable_bars(self):
+        return self.bars
+
+
+class FakeMarketData:
+    def __init__(self, snapshot):
+        self.snapshot_result = snapshot
+        self.calls = []
+
+    async def snapshot(self, symbols, timeframe, as_of):
+        self.calls.append((symbols, timeframe, as_of))
+        return self.snapshot_result
+
+    def close_frame(self, snapshot):
+        return "close-frame"
+
+
+class RecordingBroker:
+    def __init__(self):
+        self.requests = []
+
+    async def submit(self, request):
+        self.requests.append(request)
+        return {"client_order_id": request.client_order_id, "status": "accepted"}
+
+
+class ApplicationServiceTests(unittest.TestCase):
+    def test_market_snapshot_service_normalizes_latest_prices_and_schedule(self):
+        first = datetime(2024, 1, 2, tzinfo=timezone.utc)
+        second = datetime(2024, 1, 3, tzinfo=timezone.utc)
+        first_start = datetime(2024, 1, 1, tzinfo=timezone.utc)
+        second_start = datetime(2024, 1, 2, tzinfo=timezone.utc)
+        bars = (
+            Bar("A", "1d", first_start, first, Decimal("9"), Decimal("10"), Decimal("8"), Decimal("9"), Decimal("1"), first, True, "a"),
+            Bar("A", "1d", second_start, second, Decimal("10"), Decimal("12"), Decimal("9"), Decimal("11"), Decimal("1"), second, True, "b"),
+            Bar("B", "1d", second_start, second, Decimal("20"), Decimal("22"), Decimal("19"), Decimal("21"), Decimal("1"), second, True, "c"),
+        )
+        data = FakeMarketData(FakeSnapshot(bars))
+        deployment = {"market": "us", "strategy": {"symbols": ["A", "B"], "timeframe": "1d"}}
+
+        result, blocked = asyncio.run(PaperMarketSnapshotService(FakeCalendar()).collect(
+            deployment, data_adapter=data, as_of=second,
+        ))
+
+        self.assertIsNone(blocked)
+        self.assertEqual(result.close_prices, "close-frame")
+        self.assertEqual(result.latest_prices, {"A": Decimal("11"), "B": Decimal("21")})
+        self.assertEqual(result.schedule_key, second.isoformat())
+        self.assertEqual(data.calls[0][0], ["A", "B"])
+
+    def test_market_snapshot_service_returns_closed_market_without_data_call(self):
+        data = FakeMarketData(FakeSnapshot(()))
+        deployment = {"market": "us", "strategy": {"symbols": ["A"]}}
+
+        result, blocked = asyncio.run(PaperMarketSnapshotService(FakeCalendar(False)).collect(
+            deployment, data_adapter=data, as_of=datetime.now(timezone.utc),
+        ))
+
+        self.assertIsNone(result)
+        self.assertEqual(blocked["reason"], "MARKET_CLOSED")
+        self.assertEqual(data.calls, [])
+
+    def test_decision_service_uses_deployment_limits_when_planning(self):
+        service = PaperDecisionService()
+        intents = service.plan_orders(
+            cash=Decimal("1000"),
+            target_weights={"A": Decimal("1")},
+            positions={}, prices={"A": Decimal("100")}, nav=Decimal("1000"),
+            deployment={"cash_buffer": "0.10", "max_asset_weight": "0.50"},
+        )
+
+        self.assertEqual(len(intents), 1)
+        self.assertEqual(intents[0].quantity, Decimal("5"))
+
+    def test_execution_service_assigns_intent_client_ids_and_submits(self):
+        service = PaperExecutionService()
+        broker = RecordingBroker()
+        intent = type("Intent", (), {"symbol": "A", "side": "buy", "quantity": Decimal("2"), "reference_price": Decimal("10")})()
+        deployment = {"id": "d1", "account_id": "a1"}
+
+        submitted = asyncio.run(service.submit_intents(
+            deployment=deployment, intents=[intent], broker=broker, client_ids={"A": "client-1"},
+        ))
+
+        self.assertEqual(submitted[0]["status"], "accepted")
+        self.assertEqual(broker.requests[0].client_order_id, "client-1")
+        self.assertEqual(broker.requests[0].limit_price, Decimal("10"))
+
+    def test_execution_service_skips_positions_without_usable_prices(self):
+        service = PaperExecutionService()
+        broker = RecordingBroker()
+        deployment = {"id": "d1", "account_id": "a1"}
+
+        submitted = asyncio.run(service.liquidate(
+            deployment=deployment,
+            positions=[{"symbol": "A", "quantity": Decimal("2")}, {"symbol": "B", "quantity": Decimal("1")}],
+            prices={"A": Decimal("10"), "B": Decimal("0")}, broker=broker, schedule_key="s1",
+        ))
+
+        self.assertEqual(len(submitted), 1)
+        self.assertEqual(broker.requests[0].symbol, "A")
+        self.assertEqual(broker.requests[0].side, "sell")
+        self.assertEqual(broker.requests[0].client_order_id, "liquidate-d1-s1-A")
+
+
+if __name__ == "__main__":
+    unittest.main()
