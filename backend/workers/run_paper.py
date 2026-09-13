@@ -10,11 +10,7 @@ import logging
 from datetime import datetime, timezone
 from pathlib import Path
 
-from adapters.brokers.kis import KISBrokerAdapter, KISConfig
-from adapters.market_data.provider_adapter import ProviderMarketDataAdapter
 from config import settings
-from data.providers.krx_provider import KRXProvider
-from data.providers.us_provider import USProvider
 from adapters.market_data.news_feed import RSSNewsContext
 from adapters.market_data.official_sources import OpenDartClient, SecSubmissionsClient
 from adapters.market_data.fred_macro import FredMacroContext
@@ -22,6 +18,7 @@ from core.market_context import NewsEventEngine
 from core.market_context import MacroContext
 from workers.paper_worker import paper_cycle_service
 from application.paper_cycle import PaperCycleRequest
+from application.paper_runtime import build_paper_runtime
 from core.strategy_runtime import validate_strategy
 from core.execution_journal import ExecutionJournal
 from workers.paper_worker import recover_pending_submissions
@@ -51,12 +48,8 @@ def load_deployment(path):
 
 
 async def run(deployment, interval_seconds, once=False, deployment_loader=None, status_callback=None):
-    if deployment["market"] in {"krx", "us"}:
-        broker = KISBrokerAdapter(KISConfig(
-            app_key=settings.KIS_APP_KEY, app_secret=settings.KIS_APP_SECRET,
-            account_no=settings.KIS_ACCOUNT_NO, environment="paper",
-            market=deployment["market"], exchange=deployment.get("exchange", "NASD")))
-        data = ProviderMarketDataAdapter(KRXProvider(), "krx") if deployment["market"] == "krx" else ProviderMarketDataAdapter(USProvider(), "us")
+    runtime = build_paper_runtime(deployment)
+    broker, data = runtime.broker, runtime.data
     journal = ExecutionJournal(settings.PAPER_DB_PATH)
     cycle_service = paper_cycle_service()
     recovery = await recover_pending_submissions(journal, broker)
