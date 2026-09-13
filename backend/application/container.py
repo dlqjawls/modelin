@@ -33,6 +33,7 @@ from application.system_query_service import SystemQueryService
 from application.paper_trade_service import PaperTradeService
 from application.market_data_service import MarketDataService
 from application.backtest_service import BacktestService
+from application.portfolio_service import PortfolioService
 
 
 @dataclass(frozen=True)
@@ -54,6 +55,7 @@ class ApplicationContainer:
     paper_trading: PaperTradeService
     market_data: MarketDataService
     backtests: BacktestService
+    portfolio: PortfolioService
 
 
 @lru_cache(maxsize=1)
@@ -96,4 +98,5 @@ def get_container() -> ApplicationContainer:
         paper_trading=PaperTradeService(settings.PAPER_DB_PATH),
         market_data=market_data,
         backtests=BacktestService(market_data),
+        portfolio=PortfolioService(market_data),
     )
