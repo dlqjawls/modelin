@@ -2,9 +2,16 @@
 from dataclasses import dataclass, field
 from datetime import datetime
 from decimal import Decimal
+from enum import Enum
 from typing import Literal
 
 Timeframe = Literal["1m", "5m", "15m", "1h", "1d", "1w", "1M"]
+
+class Market(str, Enum):
+    """Supported market identifiers shared by strategies and providers."""
+    KRX = "krx"
+    US = "us"
+    CRYPTO = "crypto"
 
 @dataclass(frozen=True)
 class Instrument:

@@ -6,16 +6,10 @@ Modelin - 데이터 프로바이더 베이스 클래스
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime
-from enum import Enum
 
 import pandas as pd
 
-
-class Market(str, Enum):
-    """지원하는 시장 종류"""
-    KRX = "krx"           # 한국 주식
-    US = "us"             # 미국 주식
-    CRYPTO = "crypto"     # 암호화폐
+from core.contracts import Market
 
 
 @dataclass

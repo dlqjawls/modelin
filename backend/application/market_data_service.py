@@ -1,5 +1,5 @@
 """Application queries for normalized market data provider access."""
-from data.providers.base import Market
+from core.contracts import Market
 
 
 class MarketDataService:

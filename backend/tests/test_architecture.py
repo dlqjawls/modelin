@@ -143,3 +143,9 @@ def test_application_container_shares_market_data_service_with_research_services
     assert container.backtests.market_data is container.market_data
     assert container.portfolio.market_data is container.market_data
     assert container.screener.market_data is container.market_data
+
+
+def test_application_uses_domain_market_contract():
+    for name in ("container.py", "market_data_service.py"):
+        source = (BACKEND / "application" / name).read_text(encoding="utf-8")
+        assert "data.providers.base" not in source

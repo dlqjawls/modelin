@@ -12,7 +12,7 @@ from adapters.brokers.kis import KISBrokerAdapter, KISConfig
 from adapters.market_data.fred_macro import FredMacroContext
 from adapters.market_data.news_feed import RSSNewsContext
 from adapters.market_data.official_sources import OpenDartClient, SecSubmissionsClient
-from data.providers.base import Market
+from core.contracts import Market
 from data.providers.krx_provider import KRXProvider
 from data.providers.us_provider import USProvider
 from data.providers.crypto_provider import CryptoProvider
