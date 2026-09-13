@@ -9,6 +9,8 @@ from application.paper_decision import PaperDecisionService
 from application.paper_execution import PaperExecutionService
 from workers.paper_worker import execute_from_market_data
 from workers.paper_worker import serve
+from main import app, lifespan
+from config import settings
 from data.contracts import Bar
 
 
@@ -51,6 +53,15 @@ class RecordingBroker:
 
 
 class ApplicationServiceTests(unittest.TestCase):
+    def test_api_lifespan_does_not_start_worker_when_disabled(self):
+        async def scenario():
+            with patch.object(settings, "PAPER_WORKER_ENABLED", False), patch.object(settings, "PAPER_DEPLOYMENT_FILE", ""):
+                async with lifespan(app):
+                    self.assertEqual(app.state.paper_worker, "disabled")
+                    self.assertFalse(hasattr(app.state, "paper_worker_task"))
+
+        asyncio.run(scenario())
+
     def test_worker_serve_can_construct_default_scheduler(self):
         async def scenario():
             async def loader():
