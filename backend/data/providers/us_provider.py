@@ -7,6 +7,7 @@ import asyncio
 from functools import partial
 
 import pandas as pd
+import requests
 import yfinance as yf
 
 from core.contracts import AssetInfo, FundamentalData, Market
@@ -18,7 +19,6 @@ from data.cache import cache
 # 실제 운영 시 Supabase에 종목 마스터 테이블 관리
 _POPULAR_US_TICKERS = [
     ("AAPL", "Apple Inc."), ("MSFT", "Microsoft Corp."),
-    ("SPCX", "Space Exploration Technologies Corp."),
     ("GOOGL", "Alphabet Inc."), ("AMZN", "Amazon.com Inc."),
     ("NVDA", "NVIDIA Corp."), ("META", "Meta Platforms Inc."),
     ("TSLA", "Tesla Inc."), ("BRK-B", "Berkshire Hathaway"),
@@ -128,7 +128,10 @@ class USProvider(BaseProvider):
             ticker = yf.Ticker(symbol)
             return ticker.history(start=start, end=end, interval=yf_interval)
 
-        df = await self._run_sync(_fetch)
+        try:
+            df = await asyncio.wait_for(self._run_sync(_fetch), timeout=15)
+        except Exception:
+            df = pd.DataFrame()
 
         if df.empty:
             return pd.DataFrame(columns=["open", "high", "low", "close", "volume"])
@@ -140,7 +143,7 @@ class USProvider(BaseProvider):
         df = df[existing_cols]
         df.index.name = "date"
 
-        cache.set(cache_key, df, ttl=300)
+        cache.set(cache_key, df, ttl=86400)
         return df
 
     async def get_info(self, symbol: str) -> AssetInfo:
@@ -214,8 +217,42 @@ class USProvider(BaseProvider):
         return data
 
     async def get_tickers(self) -> list[AssetInfo]:
-        """주요 미국 주식 목록"""
-        return [
-            AssetInfo(symbol=sym, name=name, market=Market.US, currency="USD")
-            for sym, name in _POPULAR_US_TICKERS
-        ]
+        """All NASDAQ/NYSE/AMEX listed symbols, with outage fallback."""
+        cached = cache.get("us_tickers")
+        if cached:
+            return cached
+
+        def _fetch_listings():
+            result = []
+            sources = (
+                ("https://www.nasdaqtrader.com/dynamic/SymDir/nasdaqlisted.txt", "NASDAQ"),
+                ("https://www.nasdaqtrader.com/dynamic/SymDir/otherlisted.txt", "OTHER"),
+            )
+            for url, source in sources:
+                response = requests.get(url, timeout=15)
+                response.raise_for_status()
+                lines = response.text.splitlines()
+                headers = lines[0].split("|")
+                for line in lines[1:]:
+                    values = line.split("|")
+                    if len(values) != len(headers) or values[-1].startswith("File Creation"):
+                        continue
+                    row = dict(zip(headers, values))
+                    symbol = row.get("Symbol") or row.get("ACT Symbol", "")
+                    name = row.get("Security Name", "").split(" - ")[0]
+                    exchange = row.get("Exchange", "")
+                    exchange_code = {"N": "NYSE", "A": "AMEX"}.get(exchange, "NASD")
+                    if symbol and (source == "NASDAQ" or exchange in {"N", "A"}):
+                        result.append(AssetInfo(symbol=symbol, name=name or symbol,
+                                                market=Market.US, currency="USD",
+                                                extra={"exchange": exchange_code}))
+            return result
+
+        try:
+            tickers = await self._run_sync(_fetch_listings)
+        except Exception:
+            tickers = [AssetInfo(symbol=sym, name=name, market=Market.US, currency="USD")
+                       for sym, name in _POPULAR_US_TICKERS]
+
+        cache.set("us_tickers", tickers, ttl=86400)
+        return tickers

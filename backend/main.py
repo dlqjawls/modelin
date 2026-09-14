@@ -5,6 +5,7 @@ FastAPI 기반 백엔드 서버 진입점.
 """
 from contextlib import asynccontextmanager
 import asyncio
+import logging
 from pathlib import Path
 
 from fastapi import FastAPI
@@ -19,6 +20,8 @@ from api.trading import router as trading_router
 from api.v1 import router as operations_router
 from workers.run_paper import load_deployment, run as run_paper_worker
 from application.container import get_container
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
 
 
 @asynccontextmanager
@@ -35,16 +38,35 @@ async def lifespan(app: FastAPI):
         async def current_deployment():
             stored = operations.deployment(deployment["id"])
             if not stored:
+                candidates = []
+                for item in operations.deployments():
+                    account = operations.account(item["account_id"]) or {}
+                    if (account.get("market") == deployment.get("market")
+                            and item.get("desired_state") in {"RUNNING", "PAUSED"}
+                            and item.get("observed_state") != "ARCHIVED"):
+                        candidates.append(item)
+                if len(candidates) == 1:
+                    stored = candidates[0]
+            if not stored:
                 return deployment
             account = operations.account(stored["account_id"]) or {}
             return {
                 **deployment,
                 **stored,
+                # Keep the runner's validated strategy/universe. The
+                # operations record controls state and allocation, but an old
+                # UI strategy must not silently shrink a market-wide runner to
+                # one hard-coded symbol.
+                "strategy": deployment.get("strategy", stored.get("strategy")),
                 "market": account.get("market", deployment.get("market")),
-                "initial_cash": account.get("initial_cash", deployment.get("initial_cash", "10000000")),
+                "initial_cash": account.get("initial_cash", deployment.get("initial_cash", settings.PAPER_DEFAULT_INITIAL_CASH)),
             }
 
-        def record_worker_status(item, error):
+        app.state.paper_worker_last_result = None
+
+        def record_worker_status(item, error, result=None):
+            app.state.paper_worker_last_result = {"error": error, "result": result}
+            app.state.paper_worker = "degraded" if error else "running"
             stored = operations.deployment(item["id"])
             if stored:
                 stored["last_error"] = error
@@ -55,10 +77,13 @@ async def lifespan(app: FastAPI):
             deployment_loader=current_deployment, status_callback=record_worker_status))
         app.state.paper_worker_task = worker_task
         app.state.paper_worker = "running"
+        app.state.paper_worker_deployment_id = deployment["id"]
         print(f"[Modelin] paper worker started: {deployment['id']}")
     else:
         app.state.paper_worker_task = None
         app.state.paper_worker = "disabled"
+        app.state.paper_worker_deployment_id = None
+        app.state.paper_worker_last_result = None
     # Startup
     print(f"[Modelin] {settings.APP_NAME} v{settings.APP_VERSION} server started")
     print(f"[Modelin] Debug: {settings.DEBUG}")
@@ -111,7 +136,12 @@ async def root():
 @app.get("/api/health")
 async def health_check():
     """헬스 체크"""
-    return {"status": "healthy", "paper_worker": getattr(app.state, "paper_worker", "unknown")}
+    return {
+        "status": "healthy",
+        "paper_worker": getattr(app.state, "paper_worker", "unknown"),
+        "paper_worker_deployment_id": getattr(app.state, "paper_worker_deployment_id", None),
+        "paper_worker_last_result": getattr(app.state, "paper_worker_last_result", None),
+    }
 
 
 if __name__ == "__main__":

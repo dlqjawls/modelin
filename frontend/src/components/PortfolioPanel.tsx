@@ -3,13 +3,17 @@ import { BarChart3, Loader2 } from 'lucide-react';
 import { portfolioApi, type PortfolioOptimizationResult } from '../services/research';
 
 const methods = [['equal_weight', '동일 가중'], ['inverse_volatility', '변동성 역가중'], ['min_volatility', '최소 변동성']];
+const dateInputValue = (date: Date) => date.toISOString().slice(0, 10);
+const today = new Date();
+const yearAgo = new Date(today);
+yearAgo.setFullYear(today.getFullYear() - 1);
 
 export default function PortfolioPanel() {
-  const [symbols, setSymbols] = useState('005930,000660');
+  const [symbols, setSymbols] = useState('');
   const [market, setMarket] = useState('krx');
   const [method, setMethod] = useState('inverse_volatility');
-  const [startDate, setStartDate] = useState('2024-01-01');
-  const [endDate, setEndDate] = useState('2024-06-30');
+  const [startDate, setStartDate] = useState(dateInputValue(yearAgo));
+  const [endDate, setEndDate] = useState(dateInputValue(today));
   const [result, setResult] = useState<PortfolioOptimizationResult | null>(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);

@@ -5,6 +5,7 @@ never creates, edits, cancels, or liquidates an order.
 """
 import asyncio
 import json
+import os
 import sys
 
 import httpx
@@ -18,14 +19,15 @@ def _kis_config(market: str) -> KISConfig:
     return KISConfig(
         app_key=settings.KIS_APP_KEY,
         app_secret=settings.KIS_APP_SECRET,
-        account_no=settings.KIS_ACCOUNT_NO,
+        account_no=settings.KIS_US_ACCOUNT_NO if market == "us" else settings.KIS_KRX_ACCOUNT_NO,
         environment=settings.KIS_ENVIRONMENT,
         market=market,
     )
 
 
 async def _check_kis(market: str) -> dict:
-    if not all((settings.KIS_APP_KEY, settings.KIS_APP_SECRET, settings.KIS_ACCOUNT_NO)):
+    account_no = settings.KIS_US_ACCOUNT_NO if market == "us" else settings.KIS_KRX_ACCOUNT_NO
+    if not all((settings.KIS_APP_KEY, settings.KIS_APP_SECRET, account_no)):
         return {"status": "missing_credentials"}
     try:
         snapshot = await KISBrokerAdapter(_kis_config(market)).account_snapshot()
@@ -44,15 +46,44 @@ async def _check_kis(market: str) -> dict:
         return {"status": "error", "error": type(exc).__name__, "http_status": exc.response.status_code,
                 "provider_message": str(detail)[:200]}
     except Exception as exc:  # noqa: BLE001 - report provider failure without secrets
-        return {"status": "error", "error": type(exc).__name__}
+        return {"status": "error", "error": type(exc).__name__, "provider_message": str(exc)[:200]}
+
+
+async def _check_quote(market: str) -> dict:
+    account_no = settings.KIS_US_ACCOUNT_NO if market == "us" else settings.KIS_KRX_ACCOUNT_NO
+    if not all((settings.KIS_APP_KEY, settings.KIS_APP_SECRET, account_no)):
+        return {"status": "missing_credentials"}
+    symbol = os.getenv("KIS_TEST_SYMBOL_KRX" if market == "krx" else "KIS_TEST_SYMBOL_US",
+                       "005930" if market == "krx" else "AAPL")
+    try:
+        quote = await KISBrokerAdapter(_kis_config(market)).quote(symbol)
+        return {"status": "ok" if quote.get("price") not in (None, "") else "error",
+                "source": quote.get("source"), "symbol": quote.get("symbol"),
+                "price_present": quote.get("price") not in (None, "")}
+    except httpx.HTTPStatusError as exc:
+        return {"status": "error", "error": type(exc).__name__, "http_status": exc.response.status_code}
+    except Exception as exc:  # noqa: BLE001 - report provider failure without secrets
+        return {"status": "error", "error": type(exc).__name__, "provider_message": str(exc)[:200]}
 
 
 async def main() -> int:
-    result = {
-        "kis_krx": await _check_kis("krx"),
-        "kis_us": await _check_kis("us"),
-        "fred": {},
-    }
+    # KIS paper REST APIs enforce a per-app request interval. Keep the
+    # read-only smoke check from turning a healthy integration into a false
+    # failure by spacing sequential calls.
+    await asyncio.sleep(1.1)
+    result = {"kis_krx": await _check_kis("krx")}
+    await asyncio.sleep(1.1)
+    result["kis_us"] = await _check_kis("us")
+    await asyncio.sleep(1.1)
+    result["kis_quote_krx"] = await _check_quote("krx")
+    # US quote verification is opt-in because KIS overseas quotes are
+    # session-dependent and may be unavailable while the US market is closed.
+    if os.getenv("KIS_VERIFY_US_QUOTE", "false").lower() == "true":
+        await asyncio.sleep(1.1)
+        result["kis_quote_us"] = await _check_quote("us")
+    else:
+        result["kis_quote_us"] = {"status": "skipped", "reason": "US_MARKET_SESSION_OR_OPT_IN_REQUIRED"}
+    result["fred"] = {}
     try:
         result["fred"] = await FredMacroContext(settings.FRED_API_KEY).collect(days=7)
         result["fred"] = {
@@ -63,7 +94,8 @@ async def main() -> int:
     except Exception as exc:  # noqa: BLE001 - report provider failure without secrets
         result["fred"] = {"status": "error", "error": type(exc).__name__}
     print(json.dumps(result, ensure_ascii=False, indent=2))
-    return 0 if all(item.get("status") == "ok" for item in result.values()) else 1
+    required = ("kis_krx", "kis_us", "kis_quote_krx", "fred")
+    return 0 if all(result[name].get("status") == "ok" for name in required) else 1
 
 
 if __name__ == "__main__":

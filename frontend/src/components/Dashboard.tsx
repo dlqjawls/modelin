@@ -1,3 +1,4 @@
+/* oxlint-disable react/set-state-in-effect -- async dashboard loading synchronizes external API state */
 /**
  * Modelin - Dashboard 페이지
  * 백엔드 API 연동 버전
@@ -23,7 +24,8 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from 'recharts';
-import { marketApi, type AssetInfo, type OHLCVItem } from '../services/research';
+import { marketApi, type AssetInfo } from '../services/research';
+import { operationsApi } from '../services/operations';
 
 interface WatchlistItem extends AssetInfo {
   price: number;
@@ -46,29 +48,31 @@ function dateStr(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
-// 기본 관심종목
-const DEFAULT_WATCHLIST = [
-  { symbol: '005930', market: 'krx' },
-  { symbol: '000660', market: 'krx' },
-  { symbol: 'NVDA', market: 'us' },
-  { symbol: 'AAPL', market: 'us' },
-];
-
 export default function Dashboard() {
   const { t } = useI18n();
   const [watchlist, setWatchlist] = useState<WatchlistItem[]>([]);
   const [equityData, setEquityData] = useState<{ date: string; value: number }[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [kisTotalAssets, setKisTotalAssets] = useState<number | null>(null);
 
   const fetchWatchlist = useCallback(async () => {
     const items: WatchlistItem[] = [];
+    const [krxResponse, usResponse] = await Promise.allSettled([
+      marketApi.getTickers('krx'),
+      marketApi.getTickers('us'),
+    ]);
+    const krxTickers = krxResponse.status === 'fulfilled' ? krxResponse.value.data : [];
+    const usTickers = usResponse.status === 'fulfilled' ? usResponse.value.data : [];
+    const candidates = [
+      ...krxTickers.slice(0, 2).map((item) => ({ ...item, market: 'krx' })),
+      ...usTickers.slice(0, 2).map((item) => ({ ...item, market: 'us' })),
+    ];
 
-    for (const w of DEFAULT_WATCHLIST) {
+    for (const w of candidates) {
       try {
         // 종목 정보 조회
-        const infoRes = await marketApi.getInfo(w.symbol, w.market);
-        const info = infoRes.data;
+        const info = w;
 
         // 최근 2일 가격 데이터로 변동률 계산
         const end = new Date();
@@ -89,6 +93,13 @@ export default function Dashboard() {
         } else if (ohlcv.length === 1) {
           price = ohlcv[0].close;
         }
+        try {
+          const quote = (await marketApi.getQuote(w.symbol, w.market)).data;
+          if (quote.price !== null) price = quote.price;
+          if (quote.change_rate !== null) change = quote.change_rate;
+        } catch {
+          // Historical close remains the fallback outside the KIS session.
+        }
 
         items.push({
           ...info,
@@ -104,28 +115,15 @@ export default function Dashboard() {
   }, []);
 
   const fetchEquityData = useCallback(async () => {
-    // 대표 종목(삼성전자)의 최근 90일 가격으로 에퀴티 커브 시뮬레이션
+    // Use the KIS account valuation; do not fabricate a curve from a seed amount.
     try {
-      const end = new Date();
-      const start = new Date();
-      start.setDate(end.getDate() - 120);
-
-      const res = await marketApi.getOHLCV(
-        '005930', 'krx', dateStr(start), dateStr(end), '1d'
-      );
-      const ohlcv = res.data;
-
-      if (ohlcv.length > 0) {
-        const initialPrice = ohlcv[0].close;
-        const initialCapital = 10000000;
-        const data = ohlcv.map((d: OHLCVItem) => ({
-          date: d.date.split(' ')[0].slice(5), // MM-DD
-          value: Math.round((d.close / initialPrice) * initialCapital),
-        }));
-        setEquityData(data);
-      }
+      const response = await operationsApi.kisAccount('krx');
+      const total = Number(response.data.total_assets);
+      setKisTotalAssets(Number.isFinite(total) ? total : null);
+      setEquityData(Number.isFinite(total) ? [{ date: '현재', value: total }] : []);
     } catch {
-      // 에퀴티 데이터 실패 시 빈 배열 유지
+      setKisTotalAssets(null);
+      setEquityData([]);
     }
   }, []);
 
@@ -141,12 +139,14 @@ export default function Dashboard() {
     }
   }, [fetchWatchlist, fetchEquityData]);
 
+  // Async loading synchronizes dashboard state with external APIs.
+  // oxlint-disable-next-line react/set-state-in-effect
   useEffect(() => {
     loadData();
   }, [loadData]);
 
-  // 총 자산/수익률 계산 (관심종목 기반)
-  const totalAssets = watchlist.reduce((sum, w) => sum + w.price, 0) || 0;
+  // Total assets come from KIS, never from the watchlist sum.
+  const totalAssets = kisTotalAssets ?? 0;
   const avgChange = watchlist.length > 0
     ? watchlist.reduce((sum, w) => sum + w.change, 0) / watchlist.length
     : 0;
@@ -182,7 +182,7 @@ export default function Dashboard() {
           <div className="stat-icon blue"><Wallet size={20} /></div>
           <div className="stat-label">{t('dash.totalAssets')}</div>
           <div className="stat-value" style={{ color: 'var(--text-primary)' }}>
-            {loading ? '...' : `₩${totalAssets.toLocaleString()}`}
+            {loading ? '...' : kisTotalAssets === null ? '-' : `₩${totalAssets.toLocaleString()}`}
           </div>
         </div>
 

@@ -1,3 +1,4 @@
+/* oxlint-disable react/set-state-in-effect -- async backtest loading synchronizes external API state */
 /**
  * Modelin - 백테스팅 패널
  * 백엔드 API 실시간 연동 버전
@@ -33,14 +34,22 @@ const STRATEGIES = [
   { value: 'bollinger_bands', label: '볼린저 밴드' },
 ];
 
+function dateInputValue(date: Date): string {
+  return date.toISOString().slice(0, 10);
+}
+
+const today = new Date();
+const yearAgo = new Date(today);
+yearAgo.setFullYear(today.getFullYear() - 1);
+
 export default function BacktestPanel() {
   const { t } = useI18n();
   const [strategy, setStrategy] = useState('equal_weight');
-  const [symbols, setSymbols] = useState('005930, 000660');
+  const [symbols, setSymbols] = useState('');
   const [market, setMarket] = useState('krx');
-  const [startDate, setStartDate] = useState('2024-01-01');
-  const [endDate, setEndDate] = useState('2024-06-30');
-  const [capital, setCapital] = useState('10000000');
+  const [startDate, setStartDate] = useState(dateInputValue(yearAgo));
+  const [endDate, setEndDate] = useState(dateInputValue(today));
+  const [capital, setCapital] = useState('');
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -59,6 +68,11 @@ export default function BacktestPanel() {
       setError('종목 코드를 1개 이상 입력해주세요.');
       return;
     }
+    const initialCapital = parseFloat(capital);
+    if (!Number.isFinite(initialCapital) || initialCapital <= 0) {
+      setError('초기 자본금을 실제 금액으로 입력해주세요.');
+      return;
+    }
 
     setLoading(true);
     setError(null);
@@ -69,7 +83,7 @@ export default function BacktestPanel() {
       start_date: startDate,
       end_date: endDate,
       strategy: { type: strategy },
-      initial_capital: parseFloat(capital) || 10_000_000,
+      initial_capital: initialCapital,
       commission_rate: 0.00015,
       slippage_rate: 0.001,
       rebalance_period: '1M',
@@ -101,6 +115,8 @@ export default function BacktestPanel() {
   }, [symbols, market, startDate, endDate, capital]);
 
   // 최초 로드 시 1회 기본 백테스트 실행
+  // Async execution synchronizes the panel with the backtest API.
+  // oxlint-disable-next-line react/set-state-in-effect
   useEffect(() => {
     void runBacktest();
   }, [runBacktest]);

@@ -95,11 +95,12 @@ class ExecutionJournal:
             db.close()
 
     def mark_recovery_unknown(self, client_order_id):
-        """Keep an intent pending when the broker cannot prove its outcome."""
+        """Quarantine an intent whose broker outcome cannot be proven."""
         with self._lock:
             db = self._db()
             try:
-                db.execute("update execution_outbox set attempts=attempts+1 where event_key=?", (f"submit:{client_order_id}",))
+                db.execute("update execution_intents set status='RECOVERY_UNKNOWN' where client_order_id=?", (client_order_id,))
+                db.execute("update execution_outbox set status='BLOCKED',attempts=attempts+1 where event_key=?", (f"submit:{client_order_id}",))
                 db.commit()
             finally:
                 db.close()

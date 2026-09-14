@@ -14,7 +14,7 @@ class ScreenerService:
             factor=item["factor"], operator=item["operator"], value=item["value"],
         ) for item in conditions]
         provider = self.market_data.provider(market)
-        tickers = (await provider.get_tickers())[:100]
+        tickers = await provider.get_tickers()
         semaphore = asyncio.Semaphore(15)
 
         async def collect(ticker):

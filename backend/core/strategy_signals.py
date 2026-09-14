@@ -13,7 +13,7 @@ def generate_signals(prices: pd.DataFrame, strategy: dict) -> pd.DataFrame:
         lookback = int(strategy.get("lookback", 20))
         if lookback < 1:
             raise ValueError("lookback은 1 이상이어야 합니다.")
-        return (prices.pct_change(lookback) > 0).astype(float)
+        return (prices.pct_change(lookback, fill_method=None) > 0).astype(float)
     if kind == "moving_average":
         short, long = int(strategy.get("short_window", 20)), int(strategy.get("long_window", 60))
         if short < 1 or short >= long:

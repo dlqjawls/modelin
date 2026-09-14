@@ -1,8 +1,11 @@
 """Build bounded macro/news context for a paper deployment."""
 from collections.abc import Callable
+import logging
 
 from config import settings as default_settings
 from core.market_context import MacroContext, NewsEventEngine
+
+logger = logging.getLogger("modelin.paper_context")
 
 
 class PaperContextService:
@@ -18,24 +21,34 @@ class PaperContextService:
     async def enrich(self, deployment: dict) -> dict:
         current = deployment
         if self.config.NEWS_FEEDS:
-            if self.news_factory is None:
-                raise RuntimeError("뉴스 context provider가 구성되지 않았습니다.")
-            news_context = await self.news_factory(self.config.NEWS_FEEDS).collect()
-            current = self._with_context(current, news_context)
+            try:
+                if self.news_factory is None:
+                    raise RuntimeError("뉴스 context provider가 구성되지 않았습니다.")
+                news_context = await self.news_factory(self.config.NEWS_FEEDS).collect()
+                current = self._with_context(current, news_context)
+            except Exception as exc:
+                logger.warning("news context unavailable; continuing without it: %s", exc)
         if self.config.FRED_API_KEY or self.config.PAPER_WORKER_ENABLED:
-            if self.macro_factory is None:
-                raise RuntimeError("macro context provider가 구성되지 않았습니다.")
-            macro = await self.macro_factory(self.config.FRED_API_KEY).collect()
-            strategy = current["strategy"]
-            context = MacroContext.build(
-                fx_change_20d=macro.get("fx_change_20d", 0.0),
-                rate_change_20d=macro.get("rate_change_20d", 0.0),
-                volatility=macro.get("vix_latest", 0.0) / 100.0,
-                news=strategy.get("context", {}),
-            )
-            context.update(macro)
-            current = self._with_context(current, context)
-        official_events = await self._official_events(current)
+            try:
+                if self.macro_factory is None:
+                    raise RuntimeError("macro context provider가 구성되지 않았습니다.")
+                macro = await self.macro_factory(self.config.FRED_API_KEY).collect()
+                strategy = current["strategy"]
+                context = MacroContext.build(
+                    fx_change_20d=macro.get("fx_change_20d", 0.0),
+                    rate_change_20d=macro.get("rate_change_20d", 0.0),
+                    volatility=macro.get("vix_latest", 0.0) / 100.0,
+                    news=strategy.get("context", {}),
+                )
+                context.update(macro)
+                current = self._with_context(current, context)
+            except Exception as exc:
+                logger.warning("macro context unavailable; continuing with prior context: %s", exc)
+        try:
+            official_events = await self._official_events(current)
+        except Exception as exc:
+            logger.warning("official disclosure context unavailable; continuing without it: %s", exc)
+            official_events = []
         if official_events:
             engine = NewsEventEngine()
             official_news = engine.aggregate(

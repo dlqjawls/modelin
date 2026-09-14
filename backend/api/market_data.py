@@ -1,6 +1,8 @@
 """
 Modelin - 시장 데이터 API 라우터
 """
+import math
+
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 
@@ -42,7 +44,35 @@ class FundamentalResponse(BaseModel):
     debt_ratio: float | None = None
 
 
+class QuoteResponse(BaseModel):
+    symbol: str
+    market: str
+    source: str
+    price: float | None = None
+    change: float | None = None
+    change_rate: float | None = None
+
+
 # === Endpoints ===
+
+@router.get("/quote", response_model=QuoteResponse)
+async def get_quote(
+    symbol: str = Query(..., description="종목 코드"),
+    market: str = Query("krx", description="시장 (krx, us)"),
+):
+    """KIS 현재가 조회. 주문을 생성하지 않는 읽기 전용 API."""
+    try:
+        quote = await get_container().quotes.quote(market, symbol)
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(503, f"현재가 조회 실패: {type(exc).__name__}") from exc
+    return QuoteResponse(
+        symbol=quote["symbol"], market=quote["market"], source=quote["source"],
+        price=float(quote["price"]) if quote.get("price") not in (None, "") else None,
+        change=float(quote["change"]) if quote.get("change") not in (None, "") else None,
+        change_rate=float(quote["change_rate"]) if quote.get("change_rate") not in (None, "") else None,
+    )
 
 @router.get("/search", response_model=list[AssetInfoResponse])
 async def search_assets(
@@ -91,13 +121,21 @@ async def get_ohlcv(
     result = []
     for idx, row in df.iterrows():
         date_str = idx.strftime("%Y-%m-%d") if hasattr(idx, "strftime") else str(idx)[:10]
+        try:
+            values = {name: float(row.get(name, 0)) for name in ("open", "high", "low", "close", "volume")}
+        except (TypeError, ValueError):
+            continue
+        prices = (values["open"], values["high"], values["low"], values["close"])
+        if (not all(math.isfinite(value) for value in values.values())
+                or any(value <= 0 for value in prices)
+                or values["volume"] < 0
+                or values["high"] < max(values["open"], values["close"])
+                or values["low"] > min(values["open"], values["close"])):
+            continue
         result.append(OHLCVItem(
             date=date_str,
-            open=float(row.get("open", 0)),
-            high=float(row.get("high", 0)),
-            low=float(row.get("low", 0)),
-            close=float(row.get("close", 0)),
-            volume=float(row.get("volume", 0)),
+            open=values["open"], high=values["high"],
+            low=values["low"], close=values["close"], volume=values["volume"],
         ))
     return result
 

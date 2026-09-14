@@ -11,8 +11,11 @@ from application.screener_service import ScreenerService
 from application.market_snapshot import PaperMarketSnapshotService
 from application.paper_decision import PaperDecisionService
 from application.paper_execution import PaperExecutionService
+from application.operations_service import OperationsService, DeploymentStateConflict
+from application.system_query_service import SystemQueryService
 from workers.paper_worker import execute_from_market_data
 from workers.paper_worker import serve
+from workers.paper_runtime import build_paper_runtime
 from main import app, lifespan
 from config import settings
 from core.contracts import Bar
@@ -57,6 +60,60 @@ class RecordingBroker:
 
 
 class ApplicationServiceTests(unittest.TestCase):
+    def test_live_diagnostics_checks_market_credentials_independently(self):
+        class Broker:
+            async def account_snapshot(self):
+                return {"source": "fake-kis-us"}
+
+        previous = (settings.KIS_APP_KEY, settings.KIS_APP_SECRET,
+                    settings.KIS_KRX_ACCOUNT_NO, settings.KIS_US_ACCOUNT_NO,
+                    settings.PAPER_ALLOWED_MARKETS)
+        settings.KIS_APP_KEY = "key"
+        settings.KIS_APP_SECRET = "secret"
+        settings.KIS_KRX_ACCOUNT_NO = ""
+        settings.KIS_US_ACCOUNT_NO = "us-account"
+        settings.PAPER_ALLOWED_MARKETS = ["us"]
+        try:
+            result = asyncio.run(SystemQueryService(
+                settings, object(), broker_factory=lambda _market: Broker()
+            ).live_diagnostics())
+            self.assertEqual(result["kis_krx"]["status"], "missing_credentials")
+            self.assertEqual(result["kis_us"], {"status": "ok", "source": "fake-kis-us"})
+        finally:
+            (settings.KIS_APP_KEY, settings.KIS_APP_SECRET,
+             settings.KIS_KRX_ACCOUNT_NO, settings.KIS_US_ACCOUNT_NO,
+             settings.PAPER_ALLOWED_MARKETS) = previous
+
+    def test_existing_non_allowed_deployment_cannot_resume(self):
+        class Store:
+            def deployment(self, _deployment_id):
+                return {"id": "d-us", "account_id": "a-us", "revision": 1,
+                        "desired_state": "PAUSED", "observed_state": "PAUSED", "pause_epoch": 1}
+
+            def account(self, _account_id):
+                return {"id": "a-us", "market": "us"}
+
+            def update_deployment_if_revision(self, *_args):
+                self.updated = True
+                return True
+
+        previous = settings.PAPER_ALLOWED_MARKETS
+        settings.PAPER_ALLOWED_MARKETS = ["krx"]
+        try:
+            with self.assertRaises(DeploymentStateConflict):
+                OperationsService(Store()).command("d-us", "RESUME")
+        finally:
+            settings.PAPER_ALLOWED_MARKETS = previous
+
+    def test_paper_runtime_rejects_market_outside_allowlist(self):
+        previous = settings.PAPER_ALLOWED_MARKETS
+        settings.PAPER_ALLOWED_MARKETS = ["krx"]
+        try:
+            with self.assertRaisesRegex(ValueError, "비활성화"):
+                build_paper_runtime({"market": "us", "strategy": {"universe": "market"}})
+        finally:
+            settings.PAPER_ALLOWED_MARKETS = previous
+
     def test_screener_service_collects_fundamentals_before_core_filtering(self):
         class Market:
             value = "krx"
@@ -266,6 +323,26 @@ class ApplicationServiceTests(unittest.TestCase):
         self.assertEqual(submitted[0]["status"], "accepted")
         self.assertEqual(broker.requests[0].client_order_id, "client-1")
         self.assertEqual(broker.requests[0].limit_price, Decimal("10"))
+
+    def test_execution_service_records_each_submission_immediately(self):
+        class Broker:
+            async def submit(self, request):
+                if request.symbol == "B":
+                    raise RuntimeError("second order failed")
+                return {"status": "accepted", "broker_order_id": "1"}
+
+        recorded = []
+        intents = [
+            type("Intent", (), {"symbol": "A", "side": "buy", "quantity": 1, "reference_price": 10})(),
+            type("Intent", (), {"symbol": "B", "side": "buy", "quantity": 1, "reference_price": 10})(),
+        ]
+        with self.assertRaisesRegex(RuntimeError, "second order"):
+            asyncio.run(PaperExecutionService().submit_intents(
+                deployment={"account_id": "a"}, intents=intents, broker=Broker(),
+                client_ids={"A": "client-a", "B": "client-b"},
+                on_submitted=lambda client_id, result: recorded.append((client_id, result)),
+            ))
+        self.assertEqual(recorded, [("client-a", {"status": "accepted", "broker_order_id": "1"})])
 
     def test_execution_service_skips_positions_without_usable_prices(self):
         service = PaperExecutionService()

@@ -7,9 +7,9 @@ export interface Deployment {
   allocation_amount?: string; cash_buffer?: string; desired_state: string;
   observed_state: string; revision: number; pause_epoch: number; last_error?: string | null;
 }
-export interface HealthResponse { status: string; paper_worker?: string; }
+export interface HealthResponse { status: string; paper_worker?: string; paper_worker_deployment_id?: string | null; paper_worker_last_result?: { error?: string | null; result?: Record<string, unknown> | null } | null; }
 export interface DiagnosticsResponse {
-  paper_worker: string; sources: Record<string, string>; live_trading: string; crypto_trading: string;
+  paper_worker: string; paper_allowed_markets: string[]; sources: Record<string, string>; live_trading: string; crypto_trading: string;
 }
 export interface LiveDiagnostic { status: string; source?: string; failures?: number; error?: string; }
 export type LiveDiagnosticsResponse = Record<string, LiveDiagnostic>;
@@ -19,3 +19,4 @@ export interface AccountSnapshot {
   [key: string]: unknown;
 }
 export interface AccountSnapshotResponse { account: PaperAccount; snapshot: AccountSnapshot; }
+export interface KisAccountSnapshot { cash: string; total_assets: string; positions: Array<Record<string, unknown>>; source: string; }

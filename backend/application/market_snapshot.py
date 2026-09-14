@@ -18,7 +18,8 @@ class PaperMarketSnapshotService:
     def __init__(self, calendar=None):
         self.calendar = calendar or TradingCalendar()
 
-    async def collect(self, deployment, *, data_adapter: PaperMarketDataAdapter, as_of):
+    async def collect(self, deployment, *, data_adapter: PaperMarketDataAdapter, as_of,
+                      quote_provider=None):
         if not self.calendar.is_trading_day(deployment.get("market", "crypto"), as_of):
             return None, {"status": "skipped", "reason": "MARKET_CLOSED", "orders": []}
         symbols = deployment["strategy"].get("symbols", [])
@@ -29,10 +30,13 @@ class PaperMarketSnapshotService:
         if not usable:
             return None, {"status": "blocked", "reason": "NO_FINAL_MARKET_DATA", "orders": []}
         latest_end = max(item.end for item in usable)
+        # The full universe is explored from historical bars. Live quotes are
+        # fetched later only for selected/held symbols to respect KIS limits.
+        latest_prices = {bar.instrument_id: bar.close for bar in usable if bar.end == latest_end}
         return PaperMarketSnapshot(
             snapshot=snapshot,
             usable_bars=usable,
             close_prices=data_adapter.close_frame(snapshot),
-            latest_prices={bar.instrument_id: bar.close for bar in usable if bar.end == latest_end},
+            latest_prices=latest_prices,
             schedule_key=latest_end.isoformat(),
         ), None

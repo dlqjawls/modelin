@@ -1,10 +1,14 @@
 """Adapter from existing market providers to the normalized data contract."""
 from datetime import datetime, timedelta, timezone
+import asyncio
+import logging
 
 import pandas as pd
 
 from core.contracts import DataSnapshot
 from data.normalizer import normalize_daily_frame
+
+logger = logging.getLogger(__name__)
 
 
 class ProviderMarketDataAdapter:
@@ -19,10 +23,27 @@ class ProviderMarketDataAdapter:
         frames = {}
         start = (as_of - timedelta(days=400)).date().isoformat()
         end = as_of.date().isoformat()
-        for symbol in dict.fromkeys(symbols):
-            frame = await self.provider.get_ohlcv(symbol, start, end, "1d")
-            if not frame.empty:
-                frames[symbol] = frame
+        unique_symbols = list(dict.fromkeys(symbols))
+        semaphore = asyncio.Semaphore(20)
+
+        async def fetch(symbol):
+            async with semaphore:
+                try:
+                    return symbol, await self.provider.get_ohlcv(symbol, start, end, "1d")
+                except Exception:
+                    return symbol, None
+
+        # Keep the active request set bounded even when a full exchange
+        # universe contains several thousand symbols.
+        results = []
+        for offset in range(0, len(unique_symbols), 250):
+            batch = unique_symbols[offset:offset + 250]
+            results.extend(await asyncio.gather(*(fetch(symbol) for symbol in batch)))
+            logger.info(
+                "market snapshot progress: source=%s completed=%d/%d",
+                self.source, min(offset + len(batch), len(unique_symbols)), len(unique_symbols),
+            )
+        frames = {symbol: frame for symbol, frame in results if frame is not None and not frame.empty}
         if not frames:
             return DataSnapshot(f"{self.source}-{as_of.isoformat()}", as_of, ())
         bars = []

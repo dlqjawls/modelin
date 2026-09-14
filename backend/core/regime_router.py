@@ -31,7 +31,7 @@ class RegimeDetector:
         market = normalized.mean(axis=1, skipna=True).dropna()
         fast = market.rolling(20).mean().iloc[-1]
         slow = market.rolling(60).mean().iloc[-1]
-        volatility = market.pct_change().rolling(20).std().iloc[-1]
+        volatility = market.pct_change(fill_method=None).rolling(20).std().iloc[-1]
         if pd.isna(fast) or pd.isna(slow) or pd.isna(volatility):
             return Regime("INSUFFICIENT_DATA", 0.0, 0.0, ("FEATURES_NOT_READY",))
         risk_off = float(context.get("risk_off", 0.0)) >= 0.7

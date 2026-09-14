@@ -6,6 +6,7 @@ other entry points, such as a worker or CLI, can use the same rules.
 """
 from uuid import uuid4
 
+from config import settings
 from core.strategy_runtime import validate_strategy
 
 
@@ -23,6 +24,12 @@ class DeploymentService:
             raise LookupError("계좌를 찾을 수 없습니다.")
         if request.get("mode", "paper") != account["mode"]:
             raise ValueError("계좌와 deployment 모드가 다릅니다.")
+        market = account["market"]
+        if market not in settings.PAPER_ALLOWED_MARKETS:
+            raise ValueError(
+                f"{market} paper 운영은 현재 비활성화되어 있습니다. "
+                "PAPER_ALLOWED_MARKETS에 시장을 명시한 뒤 별도 deployment로 활성화하세요."
+            )
 
         strategy = validate_strategy(request["strategy"], request["strategy"].get("symbols"))
         item = {

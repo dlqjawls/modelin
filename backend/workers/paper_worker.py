@@ -29,7 +29,23 @@ async def recover_pending_submissions(journal: ExecutionJournal, broker) -> dict
     resolved = []
     unknown = []
     for intent in journal.pending():
-        found = await broker.lookup_order(client_order_id=intent["client_order_id"])
+        try:
+            # A broker can only reconcile an intent when it has a broker-side
+            # order id. Never let an incomplete pending row stop the worker.
+            broker_order_id = intent.get("broker_order_id")
+            if not broker_order_id:
+                journal.mark_recovery_unknown(intent["client_order_id"])
+                unknown.append(intent["client_order_id"])
+                continue
+            found = await broker.lookup_order(
+                client_order_id=intent["client_order_id"],
+                broker_order_id=broker_order_id,
+            )
+        except Exception:
+            logger.exception("pending order recovery failed; order remains blocked")
+            journal.mark_recovery_unknown(intent["client_order_id"])
+            unknown.append(intent["client_order_id"])
+            continue
         if found is None:
             journal.mark_recovery_unknown(intent["client_order_id"])
             unknown.append(intent["client_order_id"])
@@ -75,16 +91,11 @@ async def execute_once(deployment: dict, *, close_prices: pd.DataFrame, prices: 
     """
     if deployment.get("mode") != "paper" or deployment.get("observed_state") != "RUNNING":
         return {"status": "skipped", "orders": []}
-    nav = Decimal(str(account_snapshot["cash"])) + sum(
+    account_nav = Decimal(str(account_snapshot["cash"])) + sum(
         Decimal(str(item.get("quantity", 0))) * Decimal(str(prices.get(item["symbol"], 0)))
         for item in account_snapshot.get("positions", [])
     )
-    risk = RiskGuard().evaluate(current_nav=nav, peak_nav=deployment.get("peak_nav"),
-                                day_start_nav=deployment.get("day_start_nav"),
-                                policy=deployment.get("risk_policy"))
-    if not risk.allowed:
-        return {"status": "blocked", "reason_codes": risk.reason_codes, "orders": []}
-    account_nav = nav if nav > 0 else Decimal("1")
+    account_nav = account_nav if account_nav > 0 else Decimal("1")
     current_weights = {
         item["symbol"]: Decimal(str(item.get("quantity", 0))) * Decimal(str(prices.get(item["symbol"], 0))) / account_nav
         for item in account_snapshot.get("positions", [])
@@ -99,6 +110,36 @@ async def execute_once(deployment: dict, *, close_prices: pd.DataFrame, prices: 
     if decision.kind == "NO_CHANGE":
         return {"status": "no_change", "reason_codes": decision.reason_codes, "orders": []}
     positions = {f"{p['symbol']}": p for p in account_snapshot.get("positions", [])}
+
+    # A market-wide strategy has already evaluated the complete universe from
+    # the historical snapshot. Refresh only held and selected symbols before
+    # planning; this keeps the request count bounded by the portfolio size
+    # while preventing orders at stale historical closing prices.
+    quote_symbols = set(positions) | set(decision.target_weights)
+    if hasattr(broker, "quote") and quote_symbols:
+        async def refresh_quote(symbol):
+            try:
+                result = await broker.quote(symbol)
+                if result.get("price") not in (None, ""):
+                    prices[symbol] = result["price"]
+            except Exception:
+                return
+        # KIS applies an app-level interval limit to quote requests. Serialise
+        # the small selected/held set instead of bursting concurrent calls.
+        for index, symbol in enumerate(sorted(quote_symbols)):
+            if index:
+                await asyncio.sleep(1.1)
+            await refresh_quote(symbol)
+
+    nav = Decimal(str(account_snapshot["cash"])) + sum(
+        Decimal(str(item.get("quantity", 0))) * Decimal(str(prices.get(item["symbol"], 0)))
+        for item in account_snapshot.get("positions", [])
+    )
+    risk = RiskGuard().evaluate(current_nav=nav, peak_nav=deployment.get("peak_nav"),
+                                day_start_nav=deployment.get("day_start_nav"),
+                                policy=deployment.get("risk_policy"))
+    if not risk.allowed:
+        return {"status": "blocked", "reason_codes": risk.reason_codes, "orders": []}
     allocation = Decimal(str(deployment.get("allocation_amount", nav)))
     planning_nav = min(nav, allocation)
     intents = decision_service.plan_orders(
@@ -121,12 +162,14 @@ async def execute_once(deployment: dict, *, close_prices: pd.DataFrame, prices: 
                                                   for intent in intents])
         if existing_run:
             return {"status": "already_journaled", "reason_codes": decision.reason_codes, "orders": journal_rows}
+    def record_submission(client_order_id, result):
+        if journal is not None:
+            journal.mark_submitted(client_order_id, result)
+
     submitted = await execution_service.submit_intents(
         deployment=deployment, intents=intents, broker=broker, client_ids=client_ids,
+        on_submitted=record_submission,
     )
-    if journal is not None:
-        for intent, result in zip(intents, submitted):
-            journal.mark_submitted(client_ids[intent.symbol], result)
     return {"status": "executed", "reason_codes": decision.reason_codes, "orders": submitted}
 
 
@@ -136,9 +179,15 @@ async def execute_from_market_data(deployment: dict, *, data_adapter, broker, as
     if deployment.get("mode") != "paper":
         raise RuntimeError("live deployment은 아직 지원되지 않습니다.")
     snapshot_service = snapshot_service or PaperMarketSnapshotService()
-    prepared, early_result = await snapshot_service.collect(
+    if isinstance(snapshot_service, PaperMarketSnapshotService):
+        prepared, early_result = await snapshot_service.collect(
         deployment, data_adapter=data_adapter, as_of=as_of,
-    )
+        )
+    else:
+        # Preserve the small test/delivery seam used by external adapters.
+        prepared, early_result = await snapshot_service.collect(
+            deployment, data_adapter=data_adapter, as_of=as_of,
+        )
     if early_result is not None:
         return early_result
     snapshot, usable, close_prices = prepared.snapshot, prepared.usable_bars, prepared.close_prices
@@ -154,6 +203,8 @@ async def execute_from_market_data(deployment: dict, *, data_adapter, broker, as
         selected["symbols"] = symbols
         selected["context"] = deployment["strategy"].get("context", {})
         selected["adaptive"] = deployment["strategy"].get("adaptive", False)
+        selected["universe"] = deployment["strategy"].get("universe")
+        selected["max_positions"] = deployment["strategy"].get("max_positions")
         deployment = {**deployment, "strategy": selected}
     latest = prepared.latest_prices
     account = await broker.account_snapshot()

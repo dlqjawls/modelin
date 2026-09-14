@@ -62,6 +62,18 @@ async def list_accounts():
     return get_container().operations_queries.accounts()
 
 
+@router.get("/kis/account")
+async def kis_account_snapshot(market: Literal["krx", "us"] = "krx"):
+    """Read-only KIS account cash and evaluated assets for the dashboard."""
+    try:
+        return await get_container().quotes.account_snapshot(market)
+    except Exception as exc:
+        # Broker codes and their actionable guidance are safe to expose;
+        # credentials are never included in adapter error details.
+        detail = str(exc).strip() or type(exc).__name__
+        raise HTTPException(503, f"KIS 계좌 조회 실패: {detail[:500]}") from exc
+
+
 @router.get("/capabilities")
 async def capabilities(account_id: str):
     services = get_container()

@@ -1,5 +1,6 @@
 """FRED macro context collector used by the adaptive risk router."""
 import csv
+import asyncio
 from datetime import date, timedelta
 from io import StringIO
 
@@ -12,6 +13,19 @@ class FredMacroContext:
     def __init__(self, api_key: str, timeout_seconds: float = 5.0):
         self.api_key, self.timeout_seconds = api_key, timeout_seconds
 
+    async def _get(self, client, url, *, params):
+        last_error = None
+        for attempt in range(2):
+            try:
+                response = await client.get(url, params=params)
+                response.raise_for_status()
+                return response
+            except httpx.HTTPError as exc:
+                last_error = exc
+                if attempt == 0:
+                    await asyncio.sleep(0.25)
+        raise last_error
+
     async def collect(self, days: int = 30) -> dict:
         start = (date.today() - timedelta(days=days)).isoformat()
         values, failures = {}, 0
@@ -19,14 +33,14 @@ class FredMacroContext:
             for name, series_id in self.SERIES.items():
                 try:
                     if self.api_key:
-                        response = await client.get("https://api.stlouisfed.org/fred/series/observations",
+                        response = await self._get(client, "https://api.stlouisfed.org/fred/series/observations",
                             params={"api_key": self.api_key, "file_type": "json", "series_id": series_id,
                                     "observation_start": start, "sort_order": "asc"})
                         response.raise_for_status()
                         observations = [item for item in response.json().get("observations", [])
                                         if item.get("value") not in {None, ".", ""}]
                     else:
-                        response = await client.get("https://fred.stlouisfed.org/graph/fredgraph.csv",
+                        response = await self._get(client, "https://fred.stlouisfed.org/graph/fredgraph.csv",
                             params={"id": series_id, "cosd": start})
                         response.raise_for_status()
                         observations = [{"value": row[series_id]} for row in csv.DictReader(StringIO(response.text))

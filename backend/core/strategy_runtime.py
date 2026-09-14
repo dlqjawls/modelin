@@ -36,6 +36,14 @@ def validate_strategy(strategy: dict, symbols=None) -> dict:
             except (TypeError, ValueError) as exc: raise ValueError(f"{field}는 정수여야 합니다.") from exc
             if value < minimum: raise ValueError(f"{field}는 {minimum} 이상이어야 합니다.")
             normalized[field] = value
+    if "max_positions" in normalized:
+        try:
+            max_positions = int(normalized["max_positions"])
+        except (TypeError, ValueError) as exc:
+            raise ValueError("max_positions는 정수여야 합니다.") from exc
+        if max_positions < 1:
+            raise ValueError("max_positions는 1 이상이어야 합니다.")
+        normalized["max_positions"] = max_positions
     if "short_window" in normalized and "long_window" in normalized and normalized["short_window"] >= normalized["long_window"]:
         raise ValueError("short_window은 long_window보다 작아야 합니다.")
     if "num_std" in normalized and float(normalized["num_std"]) <= 0:
@@ -71,6 +79,16 @@ class StrategyRuntime:
         active = latest[latest > 0]
         if active.empty:
             return StrategyDecision("TARGET", {}, ("NO_ELIGIBLE_ASSET",))
+        # Scan the complete universe, but hold only the strongest candidates.
+        # Binary signals can otherwise turn thousands of eligible symbols into
+        # thousands of orders. Momentum is a deterministic tie-breaker shared
+        # by all signal types.
+        default_max_positions = 20 if strategy.get("universe") == "market" else len(active)
+        max_positions = int(strategy.get("max_positions", default_max_positions))
+        if len(active) > max_positions:
+            lookback = int(strategy.get("lookback", strategy.get("short_window", 20)))
+            momentum = close_prices.pct_change(max(1, lookback), fill_method=None).iloc[-1].reindex(active.index).fillna(float("-inf"))
+            active = active.loc[momentum.sort_values(ascending=False).index[:max_positions]]
         weight = Decimal("1") / Decimal(str(len(active)))
         target = {str(symbol): weight for symbol in active.index}
         cash_buffer = Decimal(str(cash_buffer))

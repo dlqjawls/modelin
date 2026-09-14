@@ -14,9 +14,11 @@ from config import settings
 
 
 async def main(symbols: list[str]) -> None:
+    if not settings.KIS_APP_KEY or not settings.KIS_APP_SECRET or not settings.KIS_KRX_ACCOUNT_NO:
+        raise SystemExit("국내 KIS paper 체결 리스너에 KIS_APP_KEY, KIS_APP_SECRET, KIS_KRX_ACCOUNT_NO가 필요합니다.")
     adapter = KISBrokerAdapter(KISConfig(
         app_key=settings.KIS_APP_KEY, app_secret=settings.KIS_APP_SECRET,
-        account_no=settings.KIS_ACCOUNT_NO, environment="paper", market="krx"))
+        account_no=settings.KIS_KRX_ACCOUNT_NO, environment="paper", market="krx"))
     stop_event = asyncio.Event()
 
     async def on_event(event: dict) -> None:

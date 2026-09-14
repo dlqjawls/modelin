@@ -1,6 +1,8 @@
 """Application services for deployment reads and state transitions."""
 from uuid import uuid4
 
+from config import settings
+
 
 class DeploymentNotFound(LookupError):
     pass
@@ -29,6 +31,11 @@ class OperationsService:
         if expected_revision is not None and expected_revision != item["revision"]:
             raise DeploymentRevisionConflict("deployment revision이 오래되었습니다.")
         if command in {"START", "RESUME"}:
+            account = self.store.account(item["account_id"])
+            if account and account["market"] not in settings.PAPER_ALLOWED_MARKETS:
+                raise DeploymentStateConflict(
+                    f"{account['market']} paper 운영은 현재 비활성화되어 있어 재개할 수 없습니다."
+                )
             item["desired_state"] = "RUNNING"
             item["observed_state"] = "STARTING"
         elif command == "PAUSE":

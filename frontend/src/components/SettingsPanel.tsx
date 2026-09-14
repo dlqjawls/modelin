@@ -22,6 +22,8 @@ export default function SettingsPanel() {
     catch (cause) { setError(getApiErrorMessage(cause, '실시간 진단에 실패했습니다.')); }
     finally { setLoading(false); }
   };
+  // Async refresh synchronizes this view with the external API.
+  // oxlint-disable-next-line react/set-state-in-effect
   useEffect(() => { void refresh(); }, [refresh]);
   return <div className="page-content animate-fadeIn">
     <div className="page-header"><div><h2>시스템 설정 및 연결 진단</h2><p>API 키 자체는 표시하지 않고 연결 상태만 확인합니다.</p></div><div style={{ display: 'flex', gap: 8 }}><button className="btn btn-secondary" onClick={() => void refresh()} disabled={loading}><RefreshCw size={16} /> 새로고침</button><button className="btn btn-primary" onClick={() => void runLiveCheck()} disabled={loading}>실시간 연결 확인</button></div></div>

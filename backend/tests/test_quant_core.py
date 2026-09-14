@@ -1,5 +1,6 @@
 import unittest
 import asyncio
+import json
 from decimal import Decimal
 
 import pandas as pd
@@ -33,6 +34,7 @@ from data.persistence.persistent_paper_broker import PersistentPaperBroker
 from core.regime_router import RegimeDetector, StrategyRouter
 from core.market_context import MacroContext, NewsEventEngine
 from workers.run_paper import load_deployment
+from workers.paper_runtime import ExchangeRoutingBroker
 from core.strategy_comparator import compare_strategies
 from core.live_gate import LiveTradingGate
 from adapters.market_data.news_feed import RSSNewsContext
@@ -44,6 +46,21 @@ from tempfile import TemporaryDirectory
 
 
 class QuantCoreTests(unittest.TestCase):
+    def test_kis_domestic_order_price_is_formatted_without_float_suffix(self):
+        self.assertEqual(KISBrokerAdapter._order_price(Decimal("10890.0")), "10890")
+        self.assertEqual(KISBrokerAdapter._order_price(Decimal("10.500")), "10.5")
+
+    def test_kis_domestic_order_quantity_is_whole_shares(self):
+        self.assertEqual(KISBrokerAdapter._domestic_order_quantity(Decimal("41.32231404")), "41")
+        with self.assertRaises(ValueError):
+            KISBrokerAdapter._domestic_order_quantity(Decimal("0.9"))
+
+    def test_kis_errors_include_actionable_operator_guidance(self):
+        message = KISBrokerAdapter._actionable_error('{"msg_cd":"IGW00013"}')
+        self.assertIn("예수금", message)
+        self.assertIn("IGW00013", message)
+        self.assertIn("반복 실행을 멈추고", KISBrokerAdapter._actionable_error("EGW00133"))
+
     def test_moving_average_defaults_have_valid_warmup(self):
         prices = pd.DataFrame({"A": range(100, 180)}, index=pd.date_range("2024-01-01", periods=80))
         signals = BacktestEngine()._generate_signals(prices, {"type": "moving_average"})
@@ -66,6 +83,52 @@ class QuantCoreTests(unittest.TestCase):
                                           broker=broker, account_snapshot={"cash": "1000", "positions": []}))
         self.assertEqual(result["status"], "executed")
         self.assertEqual(broker.requests[0].quantity, Decimal("10"))
+
+    def test_market_universe_refreshes_selected_quotes_before_planning(self):
+        class QuoteBroker:
+            def __init__(self):
+                self.quoted = []
+                self.submitted = []
+
+            async def quote(self, symbol):
+                self.quoted.append(symbol)
+                return {"price": "12"}
+
+            async def submit(self, request):
+                self.submitted.append(request)
+                return {"status": "filled", "client_order_id": request.client_order_id}
+
+        prices = pd.DataFrame({"A": [10, 10, 10]}, index=pd.date_range("2024-01-01", periods=3))
+        broker = QuoteBroker()
+        deployment = {"id": "d-market-quotes", "account_id": "a", "mode": "paper",
+                      "observed_state": "RUNNING", "allocation_amount": "100", "cash_buffer": "0",
+                      "strategy": {"type": "equal_weight", "symbols": ["A"], "universe": "market"}}
+        result = asyncio.run(execute_once(deployment, close_prices=prices, prices={"A": Decimal("10")},
+                                          broker=broker, account_snapshot={"cash": "100", "positions": []}))
+        self.assertEqual(result["status"], "executed")
+        self.assertEqual(broker.quoted, ["A"])
+
+    def test_market_quote_refresh_keeps_multiple_symbols_sequential(self):
+        class QuoteBroker:
+            def __init__(self):
+                self.quoted = []
+
+            async def quote(self, symbol):
+                self.quoted.append(symbol)
+                return {"price": "10"}
+
+            async def submit(self, request):
+                return {"status": "filled", "client_order_id": request.client_order_id}
+
+        prices = pd.DataFrame({"A": [10, 10, 10], "B": [10, 10, 10]}, index=pd.date_range("2024-01-01", periods=3))
+        broker = QuoteBroker()
+        deployment = {"id": "d-market-quotes-2", "account_id": "a", "mode": "paper",
+                      "observed_state": "RUNNING", "allocation_amount": "100", "cash_buffer": "0",
+                      "strategy": {"type": "equal_weight", "symbols": ["A", "B"], "universe": "market"}}
+        result = asyncio.run(execute_once(deployment, close_prices=prices, prices={"A": Decimal("10"), "B": Decimal("10")},
+                                          broker=broker, account_snapshot={"cash": "100", "positions": []}))
+        self.assertEqual(result["status"], "executed")
+        self.assertEqual(broker.quoted, ["A", "B"])
 
     def test_paper_order_ids_change_with_schedule_without_journal(self):
         class CountingBroker:
@@ -126,13 +189,49 @@ class QuantCoreTests(unittest.TestCase):
         self.assertTrue(deployment["strategy"]["adaptive"])
         self.assertEqual(deployment["strategy"]["type"], "moving_average")
 
-    def test_us_paper_runner_configuration_is_accepted_without_kis_credentials(self):
-        deployment = load_deployment("docs/examples/us-paper-runner.json")
+    def test_us_paper_runner_is_rejected_by_domestic_runner(self):
+        with self.assertRaisesRegex(ValueError, "국내 KRX"):
+            load_deployment("docs/examples/us-paper-runner.json")
+
+    def test_us_paper_runner_can_be_loaded_only_by_explicit_us_runner(self):
+        deployment = load_deployment("docs/examples/us-paper-runner.json", allowed_markets={"us"})
         self.assertEqual(deployment["market"], "us")
 
-    def test_us_deployment_is_validated_for_kis_overseas_execution(self):
-        deployment = load_deployment("docs/examples/us-paper-runner.json")
-        self.assertEqual(deployment.get("broker"), "local")
+    def test_us_fixed_symbol_runner_requires_exchange_mapping(self):
+        with TemporaryDirectory() as directory:
+            path = f"{directory}/us.json"
+            with open(path, "w", encoding="utf-8") as stream:
+                json.dump({"mode": "paper", "market": "us", "account_id": "12345678",
+                           "strategy": {"symbols": ["AAPL"], "timeframe": "1d"}}, stream)
+            with self.assertRaisesRegex(ValueError, "exchange"):
+                load_deployment(path, allowed_markets={"us"})
+
+    def test_us_exchange_router_selects_the_symbol_exchange(self):
+        class Broker:
+            def __init__(self, name):
+                self.name = name
+                self.submitted = []
+
+            async def submit(self, request):
+                self.submitted.append(request.symbol)
+                return {"broker_order_id": self.name, "status": "accepted"}
+
+        nasd, nyse, amex = Broker("nasd"), Broker("nyse"), Broker("amex")
+        router = ExchangeRoutingBroker(
+            {"NASD": nasd, "NYSE": nyse, "AMEX": amex},
+            {"AAPL": "NASD", "IBM": "NYSE", "SPY": "AMEX"},
+        )
+        for symbol in ("AAPL", "IBM", "SPY"):
+            asyncio.run(router.submit(OrderRequest("a", f"c-{symbol}", symbol, "buy", Decimal("1"))))
+        self.assertEqual(nasd.submitted, ["AAPL"])
+        self.assertEqual(nyse.submitted, ["IBM"])
+        self.assertEqual(amex.submitted, ["SPY"])
+        with self.assertRaisesRegex(ValueError, "거래소 정보"):
+            asyncio.run(router.submit(OrderRequest("a", "c-unknown", "UNKNOWN", "buy", Decimal("1"))))
+
+    def test_domestic_runner_rejects_us_execution_config(self):
+        with self.assertRaisesRegex(ValueError, "국내 KRX"):
+            load_deployment("docs/examples/us-paper-runner.json")
 
     def test_news_and_macro_context_is_bounded_and_risk_sensitive(self):
         engine = NewsEventEngine()
@@ -256,7 +355,8 @@ class QuantCoreTests(unittest.TestCase):
                 async def submit(self, request): self.submits += 1
             broker = Broker()
             result = asyncio.run(recover_pending_submissions(journal, broker))
-            self.assertEqual(result["resolved"], ["client-recovery"])
+            self.assertEqual(result["resolved"], [])
+            self.assertEqual(result["unknown"], ["client-recovery"])
             self.assertEqual(result["resubmitted"], [])
             self.assertEqual(broker.submits, 0)
 
@@ -411,6 +511,16 @@ class QuantCoreTests(unittest.TestCase):
         self.assertEqual(len(snapshot.bars), 1)
         self.assertEqual(snapshot.bars[0].close, Decimal("2"))
 
+    def test_provider_frame_normalizer_skips_invalid_price_bar(self):
+        frame = pd.DataFrame(
+            {"open": [1, 10], "high": [2, 5], "low": [1, 8], "close": [2, 9], "volume": [10, 20]},
+            index=pd.to_datetime(["2024-01-01", "2024-01-02"]),
+        )
+        snapshot = normalize_daily_frame(frame, instrument_id="A", source="fixture",
+                                         as_of=datetime(2024, 1, 4, tzinfo=timezone.utc))
+        self.assertEqual(len(snapshot.bars), 1)
+        self.assertEqual(snapshot.bars[0].close, Decimal("2"))
+
     def test_provider_adapter_feeds_normalized_data_to_paper_worker(self):
         class FixtureProvider:
             async def get_ohlcv(self, symbol, start, end, interval):
@@ -432,6 +542,25 @@ class QuantCoreTests(unittest.TestCase):
         self.assertFalse(cal.is_trading_day("krx", saturday))
         self.assertFalse(cal.is_trading_day("us", saturday))
         self.assertTrue(cal.is_trading_day("crypto", saturday))
+
+    def test_calendar_blocks_stock_orders_outside_local_session_hours(self):
+        cal = TradingCalendar()
+        monday = datetime(2024, 1, 8, tzinfo=timezone.utc)
+        self.assertTrue(cal.is_trading_day("krx", monday.replace(hour=1)))  # 10:00 KST
+        self.assertFalse(cal.is_trading_day("krx", monday.replace(hour=7)))  # 16:00 KST
+        self.assertTrue(cal.is_trading_day("us", monday.replace(hour=15)))  # 10:00 ET
+        self.assertFalse(cal.is_trading_day("us", monday.replace(hour=22)))  # 17:00 ET
+
+    def test_calendar_uses_official_holidays_when_dependency_is_installed(self):
+        import core.calendar as calendar_module
+        if calendar_module.xcals is None:
+            self.skipTest("exchange-calendars is not installed")
+        cal = TradingCalendar()
+        new_year = datetime(2024, 1, 1, 15, tzinfo=timezone.utc)
+        regular_day = datetime(2024, 1, 8, 15, tzinfo=timezone.utc)
+        self.assertFalse(cal.is_trading_day("krx", new_year))
+        self.assertFalse(cal.is_trading_day("us", new_year))
+        self.assertTrue(cal.is_trading_day("us", regular_day))
 
     def test_paper_adapter_snapshot_is_read_only(self):
         with TemporaryDirectory() as directory:
@@ -486,6 +615,34 @@ class QuantCoreTests(unittest.TestCase):
         self.assertEqual(result["broker_order_id"], "123")
         self.assertEqual(calls[-1].headers["tr_id"], "VTTC0802U")
         self.assertEqual(calls[-1].headers["hashkey"], "hash")
+        body = json.loads(calls[-1].content)
+        self.assertEqual(body["ORD_UNPR"], "70000")
+        self.assertEqual(body["EXCG_ID_DVSN_CD"], "KRX")
+        self.assertEqual(body["CNDT_PRIC"], "0")
+
+    def test_kis_domestic_snapshot_normalizes_positions(self):
+        def handler(request):
+            if request.url.path == "/oauth2/tokenP":
+                return httpx.Response(200, json={"access_token": "token", "rt_cd": "0"})
+            if request.url.path.endswith("inquire-balance"):
+                return httpx.Response(200, json={
+                    "rt_cd": "0",
+                    "output1": [{"pdno": "005930", "hldg_qty": "3",
+                                  "ord_psbl_qty": "3", "pchs_avg_pric": "70000", "evlu_amt": "210000"}],
+                    "output2": [{"dnca_tot_amt": "1000000", "tot_evlu_amt": "1210000"}],
+                })
+            return httpx.Response(200, json={"rt_cd": "0"})
+
+        async def scenario():
+            async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+                adapter = KISBrokerAdapter(KISConfig("key", "secret", "12345678"), client)
+                return await adapter.account_snapshot()
+
+        snapshot = asyncio.run(scenario())
+        self.assertEqual(snapshot["positions"], [{
+            "symbol": "005930", "quantity": "3", "avg_price": "70000",
+            "market_value": "210000", "market": "krx",
+        }])
 
     def test_kis_paper_adapter_maps_us_overseas_order(self):
         calls = []
@@ -524,6 +681,27 @@ class QuantCoreTests(unittest.TestCase):
                 await overseas.account_snapshot()
         asyncio.run(scenario())
         self.assertEqual(sum(1 for request in calls if request.url.path == "/oauth2/tokenP"), 1)
+
+    def test_kis_overseas_snapshot_uses_position_value_when_total_is_missing(self):
+        def handler(request):
+            if request.url.path == "/oauth2/tokenP":
+                return httpx.Response(200, json={"access_token": "token", "rt_cd": "0"})
+            return httpx.Response(200, json={
+                "rt_cd": "0",
+                "output1": [{"ovrs_pdno": "AAPL", "ovrs_cblc_qty": "2",
+                              "pchs_avg_pric": "180", "ovrs_stck_evlu_amt": "400"}],
+                "output2": [{"frcr_dncl_amt": "100", "ovrs_tot_amt": "0"}],
+            })
+
+        async def scenario():
+            async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+                adapter = KISBrokerAdapter(KISConfig("key", "secret", "12345678", market="us"), client)
+                return await adapter.account_snapshot()
+
+        snapshot = asyncio.run(scenario())
+        self.assertEqual(snapshot["cash"], "100")
+        self.assertEqual(snapshot["total_assets"], "500")
+        self.assertEqual(snapshot["positions"][0]["market_value"], "400")
 
     def test_kis_order_events_polls_daily_orders_with_cursor(self):
         def handler(request):
@@ -601,6 +779,27 @@ class QuantCoreTests(unittest.TestCase):
             return await create_deployment(request, idempotency_key=None)
         deployment = asyncio.run(scenario())
         self.assertEqual(deployment["observed_state"], "DRAFT")
+
+    def test_deployment_creation_respects_market_allowlist(self):
+        from application.deployment_service import DeploymentService
+        from config import settings
+
+        class Store:
+            def account(self, _account_id):
+                return {"id": "us-1", "mode": "paper", "market": "us"}
+
+        previous = settings.PAPER_ALLOWED_MARKETS
+        settings.PAPER_ALLOWED_MARKETS = ["krx"]
+        try:
+            with self.assertRaisesRegex(ValueError, "PAPER_ALLOWED_MARKETS"):
+                DeploymentService(Store()).create_paper({
+                    "account_id": "us-1",
+                    "mode": "paper",
+                    "strategy": {"type": "momentum", "symbols": ["AAPL"]},
+                    "allocation_amount": "100",
+                })
+        finally:
+            settings.PAPER_ALLOWED_MARKETS = previous
 
     def test_registry_requires_explicit_kis_paper_registration(self):
         registry = BrokerRegistry()

@@ -1,5 +1,6 @@
 export interface AssetInfo { symbol: string; name: string; market: string; sector: string; market_cap: number; currency: string; }
 export interface OHLCVItem { date: string; open: number; high: number; low: number; close: number; volume: number; }
+export interface Quote { symbol: string; market: string; source: string; price: number | null; change: number | null; change_rate: number | null; }
 export interface FundamentalData { symbol: string; per: number | null; pbr: number | null; psr: number | null; eps: number | null; bps: number | null; roe: number | null; roa: number | null; dividend_yield: number | null; operating_margin: number | null; debt_ratio: number | null; }
 export interface ScreenerCondition { factor: string; operator: string; value: number; }
 export interface ScreenerResultItem { symbol: string; name: string; market: string; per: number | null; pbr: number | null; roe: number | null; eps: number | null; bps: number | null; market_cap: number; dividend_yield: number | null; operating_margin: number | null; sector: string; }

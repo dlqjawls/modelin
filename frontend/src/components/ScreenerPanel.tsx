@@ -1,3 +1,4 @@
+/* oxlint-disable react/set-state-in-effect -- async screening synchronizes external API state */
 /**
  * Modelin - 종목 스크리닝 패널
  * 백엔드 API 실시간 연동 버전
@@ -134,6 +135,8 @@ export default function ScreenerPanel() {
   }, [market, conditions]);
 
   // 최초 로드시 1회 자동 실행
+  // Async screening synchronizes the initial view with the API.
+  // oxlint-disable-next-line react/set-state-in-effect
   useEffect(() => {
     void runScreening();
   }, [runScreening]);

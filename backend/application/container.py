@@ -36,6 +36,7 @@ from application.market_data_service import MarketDataService
 from application.backtest_service import BacktestService
 from application.portfolio_service import PortfolioService
 from application.screener_service import ScreenerService
+from application.quote_service import QuoteService
 
 
 @dataclass(frozen=True)
@@ -59,6 +60,7 @@ class ApplicationContainer:
     backtests: BacktestService
     portfolio: PortfolioService
     screener: ScreenerService
+    quotes: QuoteService
 
 
 @lru_cache(maxsize=1)
@@ -74,7 +76,7 @@ def get_container() -> ApplicationContainer:
         return KISBrokerAdapter(KISConfig(
             app_key=settings.KIS_APP_KEY,
             app_secret=settings.KIS_APP_SECRET,
-            account_no=settings.KIS_ACCOUNT_NO,
+            account_no=settings.KIS_US_ACCOUNT_NO if market == "us" else settings.KIS_KRX_ACCOUNT_NO,
             environment="paper",
             market=market,
         ))
@@ -102,10 +104,12 @@ def get_container() -> ApplicationContainer:
         ),
         system_queries=SystemQueryService(
             settings, store, broker_factory=broker_factory, macro_factory=FredMacroContext,
+            news_factory=RSSNewsContext,
         ),
         paper_trading=PaperTradeService(paper_broker_factory),
         market_data=market_data,
         backtests=BacktestService(market_data),
         portfolio=PortfolioService(market_data),
         screener=ScreenerService(market_data),
+        quotes=QuoteService(broker_factory),
     )

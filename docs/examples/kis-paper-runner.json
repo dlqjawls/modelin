@@ -7,11 +7,12 @@
   "cash_buffer": "0.10",
   "max_asset_weight": "0.25",
   "strategy": {
-    "symbols": ["005930"],
+    "universe": "market",
     "timeframe": "1d",
     "type": "moving_average",
     "adaptive": true,
     "auto_select": true,
+    "max_positions": 20,
     "short_window": 20,
     "long_window": 60,
     "context": {

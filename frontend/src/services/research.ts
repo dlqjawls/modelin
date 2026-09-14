@@ -1,17 +1,18 @@
 import { apiClient } from './client';
 export type {
-  AssetInfo, OHLCVItem, FundamentalData, ScreenerCondition, ScreenerResultItem,
+  AssetInfo, OHLCVItem, Quote, FundamentalData, ScreenerCondition, ScreenerResultItem,
   ScreenerResponse, BacktestConfig, BacktestResult, StrategyScore,
   PortfolioOptimizationResult,
 } from '../contracts/research';
 import type {
-  AssetInfo, OHLCVItem, FundamentalData, ScreenerCondition, ScreenerResponse,
+  AssetInfo, OHLCVItem, Quote, FundamentalData, ScreenerCondition, ScreenerResponse,
   BacktestConfig, BacktestResult, StrategyScore, PortfolioOptimizationResult,
 } from '../contracts/research';
 
 export const marketApi = {
   search: (q: string, market = 'krx') => apiClient.get<AssetInfo[]>('/api/market/search', { params: { q, market } }),
   getOHLCV: (symbol: string, market: string, start: string, end: string, interval = '1d') => apiClient.get<OHLCVItem[]>('/api/market/ohlcv', { params: { symbol, market, start, end, interval } }),
+  getQuote: (symbol: string, market = 'krx') => apiClient.get<Quote>('/api/market/quote', { params: { symbol, market } }),
   getInfo: (symbol: string, market = 'krx') => apiClient.get<AssetInfo>('/api/market/info', { params: { symbol, market } }),
   getFundamental: (symbol: string, market = 'krx') => apiClient.get<FundamentalData>('/api/market/fundamental', { params: { symbol, market } }),
   getTickers: (market = 'krx') => apiClient.get<AssetInfo[]>('/api/market/tickers', { params: { market } }),

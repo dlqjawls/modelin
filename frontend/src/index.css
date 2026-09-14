@@ -562,6 +562,60 @@ a:hover {
   grid-column: span 2;
 }
 
+/* === Operations panels === */
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.8fr) minmax(320px, 1.2fr);
+  gap: var(--space-md);
+  margin-top: var(--space-md);
+}
+
+.metric-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+  min-height: 34px;
+  padding: var(--space-xs) 0;
+  color: var(--text-secondary);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.metric-row strong {
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+.status-ok { color: #34d399 !important; }
+.status-error { color: #fb7185 !important; }
+
+.list-row {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-md);
+  margin-top: var(--space-xs);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.02);
+  color: var(--text-primary);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.list-row:hover,
+.list-row.active {
+  background: var(--bg-card-hover);
+  border-color: var(--accent-blue);
+}
+
 /* === Table === */
 .data-table {
   width: 100%;
@@ -764,6 +818,7 @@ a:hover {
 .badge-loss { background: var(--color-loss-bg); color: var(--color-loss); }
 .badge-info { background: var(--color-info-bg); color: var(--color-info); }
 .badge-warning { background: var(--color-warning-bg); color: var(--color-warning); }
+.badge-danger { background: var(--color-loss-bg); color: var(--color-loss); }
 
 /* === Chart Container === */
 .chart-container {
@@ -883,6 +938,7 @@ a:hover {
 }
 
 @media (max-width: 768px) {
+  .dashboard-grid { grid-template-columns: 1fr; }
   .stats-grid {
     grid-template-columns: repeat(2, 1fr);
   }

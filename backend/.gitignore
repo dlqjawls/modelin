@@ -27,3 +27,5 @@ Thumbs.db
 # Data
 *.db
 *.sqlite3
+.kis-token-cache.json
+.market-data-cache/

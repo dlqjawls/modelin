@@ -56,7 +56,16 @@ class OperationsStore:
 
     def accounts(self):
         db = self._db()
-        try: return [dict(row) for row in db.execute("select * from operation_accounts order by created_at desc")]
+        try:
+            rows = [dict(row) for row in db.execute("select * from operation_accounts order by created_at desc")]
+            # Repeated local setup calls can create identical paper account
+            # profiles. Keep the newest record visible while preserving the
+            # underlying audit rows and account IDs.
+            unique = {}
+            for row in rows:
+                key = (row["name"], row["mode"], row["market"], row["currency"], row["initial_cash"])
+                unique.setdefault(key, row)
+            return list(unique.values())
         finally: db.close()
 
     def account(self, account_id):

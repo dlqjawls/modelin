@@ -25,7 +25,7 @@ class PortfolioService:
         if not frames:
             raise ValueError("가격 데이터가 없습니다.")
         prices = pd.DataFrame(frames).ffill().dropna(axis=1, how="all")
-        returns = prices.pct_change().dropna(how="all").fillna(0)
+        returns = prices.pct_change(fill_method=None).dropna(how="all").fillna(0)
         symbols = list(prices.columns)
         if method == "equal_weight":
             raw = np.ones(len(symbols))

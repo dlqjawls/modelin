@@ -103,7 +103,7 @@ class KRXProvider(BaseProvider):
             return df
 
         try:
-            df = await self._run_sync(_fetch_fdr)
+            df = await asyncio.wait_for(self._run_sync(_fetch_fdr), timeout=15)
         except Exception:
             # Fallback: yfinance
             try:
@@ -118,14 +118,17 @@ class KRXProvider(BaseProvider):
                     cols = ["open", "high", "low", "close", "volume"]
                     existing = [c for c in cols if c in hist.columns]
                     return hist[existing]
-                df = await self._run_sync(_fetch_yf)
+                df = await asyncio.wait_for(self._run_sync(_fetch_yf), timeout=15)
             except Exception:
                 df = pd.DataFrame(columns=["open", "high", "low", "close", "volume"])
 
         if df.empty:
             df = pd.DataFrame(columns=["open", "high", "low", "close", "volume"])
 
-        cache.set(cache_key, df, ttl=300)
+        # Daily history does not change within the session; keep it through
+        # the trading day so a 5-minute worker does not redownload thousands
+        # of symbols on every cycle.
+        cache.set(cache_key, df, ttl=86400)
         return df
 
     async def get_info(self, symbol: str) -> AssetInfo:
@@ -224,16 +227,38 @@ class KRXProvider(BaseProvider):
         return data
 
     async def get_tickers(self) -> list[AssetInfo]:
-        """KRX 주요 종목 목록"""
+        """All available KRX listed stocks, with outage fallback."""
         cache_key = "krx_tickers"
         cached = cache.get(cache_key)
         if cached:
             return cached
 
         def _fetch_tickers():
+            try:
+                listing = fdr.StockListing("KRX")
+                if not listing.empty:
+                    code_col = "Code" if "Code" in listing.columns else "Symbol"
+                    market_col = "Market" if "Market" in listing.columns else None
+                    marcap_col = "Marcap" if "Marcap" in listing.columns else None
+                    result = []
+                    for _, row in listing.iterrows():
+                        symbol = str(row.get(code_col, "")).strip()
+                        if not symbol or symbol.lower() == "nan":
+                            continue
+                        result.append(AssetInfo(
+                            symbol=symbol.zfill(6), name=str(row.get("Name", symbol)),
+                            market=Market.KRX,
+                            sector=str(row.get(market_col, "")) if market_col else "",
+                            market_cap=float(row.get(marcap_col, 0) or 0) if marcap_col else 0,
+                            currency="KRW",
+                        ))
+                    if result:
+                        return result
+            except Exception:
+                pass
             tickers: list[AssetInfo] = []
             headers = {"User-Agent": "Mozilla/5.0"}
-            for market_name, count in [("KOSPI", 100), ("KOSDAQ", 50)]:
+            for market_name, count in [("KOSPI", 2000), ("KOSDAQ", 2000)]:
                 try:
                     url = f"https://m.stock.naver.com/api/stocks/marketValue/{market_name}?page=1&pageSize={count}"
                     r = requests.get(url, headers=headers, timeout=5)
@@ -264,7 +289,10 @@ class KRXProvider(BaseProvider):
             return tickers
 
         try:
-            tickers = await self._run_sync(_fetch_tickers)
+            # FinanceDataReader may block inside a third-party network call;
+            # bound the entire listing lookup so the paper worker can fall
+            # back instead of remaining forever in STARTING.
+            tickers = await asyncio.wait_for(self._run_sync(_fetch_tickers), timeout=20)
         except Exception:
             tickers = [
                 AssetInfo(symbol=s, name=n, market=Market.KRX, sector=sec, currency="KRW")

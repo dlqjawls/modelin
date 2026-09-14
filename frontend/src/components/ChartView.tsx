@@ -1,3 +1,4 @@
+/* oxlint-disable react/set-state-in-effect -- async chart loading synchronizes external API state */
 /**
  * Modelin - 차트 분석 페이지
  * 백엔드 API 연동 버전 (실시간 OHLCV 데이터)
@@ -16,26 +17,6 @@ import { RefreshCw, Search, AlertCircle } from 'lucide-react';
 import { useI18n } from '../hooks/useI18n';
 import { marketApi, type OHLCVItem } from '../services/research';
 
-const QUICK_SYMBOLS = {
-  krx: [
-    { symbol: '005930', name: '삼성전자' },
-    { symbol: '000660', name: 'SK하이닉스' },
-    { symbol: '005380', name: '현대차' },
-    { symbol: '035420', name: 'NAVER' },
-  ],
-  us: [
-    { symbol: 'NVDA', name: 'NVIDIA' },
-    { symbol: 'AAPL', name: 'Apple' },
-    { symbol: 'TSLA', name: 'Tesla' },
-    { symbol: 'MSFT', name: 'Microsoft' },
-  ],
-  crypto: [
-    { symbol: 'BTC/USDT', name: 'Bitcoin' },
-    { symbol: 'ETH/USDT', name: 'Ethereum' },
-    { symbol: 'SOL/USDT', name: 'Solana' },
-  ],
-};
-
 function formatDate(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
@@ -50,8 +31,9 @@ export default function ChartView() {
   const volumeSeriesRef = useRef<ISeriesApi<'Histogram'> | null>(null);
 
   const [market, setMarket] = useState<'krx' | 'us' | 'crypto'>('krx');
-  const [symbol, setSymbol] = useState('005930');
-  const [inputSymbol, setInputSymbol] = useState('005930');
+  const [symbol, setSymbol] = useState('');
+  const [inputSymbol, setInputSymbol] = useState('');
+  const [quickSymbols, setQuickSymbols] = useState<{ symbol: string; name: string }[]>([]);
   const [interval, setInterval] = useState('1d');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -65,6 +47,22 @@ export default function ChartView() {
     changeRate: 0,
     currency: 'KRW',
   });
+
+  // Async chart loading synchronizes the view with market data.
+  // oxlint-disable-next-line react/set-state-in-effect
+  useEffect(() => {
+    let active = true;
+    void marketApi.getTickers(market).then((response) => {
+      if (!active) return;
+      const next = response.data.slice(0, 4).map((item) => ({ symbol: item.symbol, name: item.name }));
+      setQuickSymbols(next);
+      if (!symbol && next[0]) {
+        setSymbol(next[0].symbol);
+        setInputSymbol(next[0].symbol);
+      }
+    }).catch(() => { if (active) setQuickSymbols([]); });
+    return () => { active = false; };
+  }, [market, symbol]);
 
   // 차트 인스턴스 초기화
   useEffect(() => {
@@ -231,15 +229,23 @@ export default function ChartView() {
       // 최신 봉 정보 업데이트
       const latest = uniqueData[uniqueData.length - 1];
       const prev = uniqueData.length > 1 ? uniqueData[uniqueData.length - 2] : null;
-      const chgRate = prev && prev.close > 0 ? ((latest.close - prev.close) / prev.close) * 100 : 0;
+      let currentClose = latest.close;
+      let currentChangeRate = prev && prev.close > 0 ? ((latest.close - prev.close) / prev.close) * 100 : 0;
+      try {
+        const quote = (await marketApi.getQuote(symbol, market)).data;
+        if (quote.price !== null) currentClose = quote.price;
+        if (quote.change_rate !== null) currentChangeRate = quote.change_rate;
+      } catch {
+        // Historical latest close remains the fallback outside the KIS session.
+      }
 
       setLatestStats({
         open: latest.open,
         high: latest.high,
         low: latest.low,
-        close: latest.close,
+        close: currentClose,
         volume: latest.volume,
-        changeRate: chgRate,
+        changeRate: currentChangeRate,
         currency: market === 'krx' ? 'KRW' : 'USD',
       });
     } catch (err: unknown) {
@@ -263,7 +269,7 @@ export default function ChartView() {
 
   const handleMarketChange = (newMarket: 'krx' | 'us' | 'crypto') => {
     setMarket(newMarket);
-    const defaultSym = QUICK_SYMBOLS[newMarket][0]?.symbol || '';
+    const defaultSym = quickSymbols[0]?.symbol || '';
     setSymbol(defaultSym);
     setInputSymbol(defaultSym);
   };
@@ -324,7 +330,7 @@ export default function ChartView() {
 
           {/* Quick Select Buttons */}
           <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-            {QUICK_SYMBOLS[market].map((q) => (
+            {quickSymbols.map((q) => (
               <button
                 key={q.symbol}
                 className={`btn btn-sm ${symbol === q.symbol ? 'btn-primary' : 'btn-ghost'}`}
