@@ -46,48 +46,51 @@ export default function Sidebar({ activePage, onNavigate }: SidebarProps) {
       <nav className="sidebar-nav">
         <div className="nav-section-label">{t('nav.analysis')}</div>
         {analysisNav.map((item) => (
-          <div
+          <button
             key={item.id}
             className={`nav-item ${activePage === item.id ? 'active' : ''}`}
             onClick={() => onNavigate(item.id)}
+            aria-current={activePage === item.id ? 'page' : undefined}
           >
             <item.icon className="nav-item-icon" />
             <span>{item.label}</span>
-          </div>
+          </button>
         ))}
 
-        <div className="nav-section-label" style={{ marginTop: '8px' }}>
+        <div className="nav-section-label nav-section-label-spaced">
           {t('nav.execution')}
         </div>
         {executionNav.map((item) => (
-          <div
+          <button
             key={item.id}
             className={`nav-item ${activePage === item.id ? 'active' : ''}`}
             onClick={() => onNavigate(item.id)}
+            aria-current={activePage === item.id ? 'page' : undefined}
           >
             <item.icon className="nav-item-icon" />
             <span>{item.label}</span>
             {item.badge && <span className="nav-item-badge">{item.badge}</span>}
-          </div>
+          </button>
         ))}
 
-        <div style={{ flex: 1 }} />
+        <div className="sidebar-spacer" />
 
-        <div
+        <button
           className="nav-item"
           onClick={() => setLang(lang === 'ko' ? 'en' : 'ko')}
         >
           <Globe className="nav-item-icon" />
           <span>{lang === 'ko' ? 'English' : '한국어'}</span>
-        </div>
+        </button>
 
-        <div
+        <button
           className={`nav-item ${activePage === 'settings' ? 'active' : ''}`}
           onClick={() => onNavigate('settings')}
+          aria-current={activePage === 'settings' ? 'page' : undefined}
         >
           <Settings className="nav-item-icon" />
           <span>{t('nav.settings')}</span>
-        </div>
+        </button>
       </nav>
     </aside>
   );

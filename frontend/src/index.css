@@ -256,6 +256,11 @@ a:hover {
   font-weight: 500;
   position: relative;
   user-select: none;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  font: inherit;
+  width: 100%;
 }
 
 .nav-item:hover {
@@ -301,6 +306,9 @@ a:hover {
   font-weight: 600;
 }
 
+.nav-section-label-spaced { margin-top: var(--space-sm); }
+.sidebar-spacer { flex: 1; }
+
 /* === Header Bar === */
 .header-bar {
   height: 56px;
@@ -344,6 +352,16 @@ a:hover {
 
 .header-search input::placeholder {
   color: var(--text-muted);
+}
+
+.keyboard-hint {
+  font-size: 0.65rem;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: var(--bg-primary);
+  color: var(--text-muted);
+  border: 1px solid var(--border-subtle);
+  white-space: nowrap;
 }
 
 .header-actions {

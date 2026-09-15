@@ -5,14 +5,20 @@ import { Search, Bell } from 'lucide-react';
 import { useI18n } from '../hooks/useI18n';
 import { useState } from 'react';
 
+function isKrxOpen(date: Date): boolean {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Asia/Seoul', weekday: 'short', hour: 'numeric', minute: 'numeric', hour12: false,
+  }).formatToParts(date);
+  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  const minutes = Number(values.hour) * 60 + Number(values.minute);
+  return !['Sat', 'Sun'].includes(values.weekday) && minutes >= 540 && minutes < 930;
+}
+
 export default function HeaderBar() {
   const { t } = useI18n();
   const [searchQuery, setSearchQuery] = useState('');
 
-  // 시장 시간 체크 (KRX: 9:00~15:30 KST)
-  const now = new Date();
-  const hours = now.getHours();
-  const isMarketOpen = hours >= 9 && hours < 16; // 대략적 판단
+  const isMarketOpen = isKrxOpen(new Date());
 
   return (
     <header className="header-bar">
@@ -24,17 +30,7 @@ export default function HeaderBar() {
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
         />
-        <kbd
-          style={{
-            fontSize: '0.65rem',
-            padding: '2px 6px',
-            borderRadius: '4px',
-            background: 'var(--bg-primary)',
-            color: 'var(--text-muted)',
-            border: '1px solid var(--border-subtle)',
-            whiteSpace: 'nowrap',
-          }}
-        >
+        <kbd className="keyboard-hint">
           ⌘K
         </kbd>
       </div>
