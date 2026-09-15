@@ -610,6 +610,12 @@ a:hover {
 .watchlist-change { font-size: 0.75rem; font-weight: 600; display: flex; align-items: center; justify-content: flex-end; gap: 2px; }
 .empty-state.compact { padding: var(--space-lg); }
 .empty-state-muted { color: var(--text-muted); opacity: 0.4; }
+.portfolio-config-card { margin-bottom: var(--space-md); }
+.portfolio-form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: var(--space-md); }
+.portfolio-submit { margin-top: var(--space-md); }
+.form-error { color: var(--color-loss); margin-top: var(--space-sm); }
+.allocation-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: var(--space-sm); }
+.portfolio-metrics { display: flex; flex-wrap: wrap; gap: var(--space-lg); margin-top: var(--space-lg); color: var(--text-secondary); }
 
 .page-header-actions {
   display: flex;
