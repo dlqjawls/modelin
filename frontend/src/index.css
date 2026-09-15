@@ -637,6 +637,9 @@ a:hover {
 .condition-remove { color: var(--text-tertiary); }
 .condition-actions { display: flex; justify-content: space-between; align-items: center; margin-top: var(--space-md); gap: var(--space-md); }
 .alert-dismiss { margin-left: auto; color: var(--color-loss); }
+.section-gap { margin-bottom: var(--space-md); }
+.inner-gap { margin-top: var(--space-sm); }
+.command-group { margin-top: var(--space-md); gap: var(--space-sm); }
 .chart-controls-card { margin-bottom: var(--space-md); }
 .chart-controls { display: flex; align-items: center; gap: var(--space-md); flex-wrap: wrap; }
 .inline-input-group { display: flex; align-items: center; gap: var(--space-sm); }

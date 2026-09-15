@@ -81,14 +81,14 @@ export default function TradingPanel() {
   return <div className="page-content">
     <PageHeader title="자동매매 운영" description="현재는 안전한 Paper 모드만 지원합니다." actions={<><StatusBadge label={`WORKER · ${workerState.toUpperCase()}`} tone={workerState === 'running' ? 'success' : workerState === 'degraded' ? 'danger' : 'info'} /><button className="btn btn-secondary" onClick={() => void refresh()}><RefreshCw size={16} /> 새로고침</button></>} />
     {error && <div className="alert alert-error">{error}</div>}
-    {workerDeploymentId && <div className="metric-row" style={{ marginBottom: 16 }}><span>워커 배포</span><strong>{workerDeploymentId}</strong></div>}
-    {lastWorkerResult && <section className="card" style={{ marginBottom: 16 }}>
+    {workerDeploymentId && <div className="metric-row section-gap"><span>워커 배포</span><strong>{workerDeploymentId}</strong></div>}
+    {lastWorkerResult && <section className="card section-gap">
       <h3>최근 Worker 상태</h3>
       <div className="metric-row"><span>결과</span><strong>{String(lastWorkerResult.result?.status ?? (lastWorkerResult.error ? 'error' : 'unknown'))}</strong></div>
       {Boolean(lastWorkerResult.result?.reason) && <div className="metric-row"><span>사유</span><strong>{String(lastWorkerResult.result?.reason)}</strong></div>}
-      {lastWorkerResult.error && <div className="alert alert-error" style={{ marginTop: 12 }}>{String(lastWorkerResult.error)}</div>}
+      {lastWorkerResult.error && <div className="alert alert-error inner-gap">{String(lastWorkerResult.error)}</div>}
     </section>}
-    {diagnostics && <section className="card" style={{ marginBottom: 16 }}><h3>연결 진단</h3>
+    {diagnostics && <section className="card section-gap"><h3>연결 진단</h3>
       <div className="metric-row"><span>Paper 운영 허용 시장</span><strong>{diagnostics.paper_allowed_markets.map((market) => market.toUpperCase()).join(', ') || '없음'}</strong></div>
       {Object.entries(diagnostics.sources || {}).map(([name, state]) => <div className="metric-row" key={name}>
         <span>{name}</span><strong>{String(state)}</strong>
@@ -109,8 +109,8 @@ export default function TradingPanel() {
           <div className="metric-row"><span>보유 종목</span><strong>{snapshot?.snapshot?.positions?.length ?? 0}</strong></div>
           <div className="metric-row"><span>주문 이벤트</span><strong>{snapshot?.snapshot?.events?.length ?? 0}</strong></div>
           {deployment && <><div className="metric-row"><span>전략 상태</span><strong>{deployment.observed_state}</strong></div>
-            {deployment.last_error && <div className="alert alert-error" style={{ marginTop: 12 }}>{deployment.last_error}</div>}
-            <div className="button-row" style={{ marginTop: 16, gap: 8 }}>
+            {deployment.last_error && <div className="alert alert-error inner-gap">{deployment.last_error}</div>}
+            <div className="button-row command-group">
               {deployment.observed_state === 'RUNNING' ? <button className="btn btn-secondary" onClick={() => void sendCommand('PAUSE')}>일시정지</button> : <button className="btn btn-primary" onClick={() => void sendCommand('RESUME')}>재개</button>}
               <button className="btn btn-secondary" onClick={() => void sendCommand('CANCEL_OPEN')}>신규 주문 중단</button>
               <button className="btn btn-danger" onClick={() => void sendCommand('LIQUIDATE')}>전체 청산</button>
