@@ -26,13 +26,15 @@ export default function SettingsPanel() {
   // Async refresh synchronizes this view with the external API.
   // oxlint-disable-next-line react/set-state-in-effect
   useEffect(() => { void refresh(); }, [refresh]);
+  const sourceEntries = Object.entries(diagnostics?.sources ?? {});
+  const liveEntries = live ? Object.entries(live) : [];
   return <div className="page-content animate-fadeIn">
     <PageHeader title="시스템 설정 및 연결 진단" description="API 키 자체는 표시하지 않고 연결 상태만 확인합니다." actions={<><button className="btn btn-secondary" onClick={() => void refresh()} disabled={loading}><RefreshCw size={16} /> 새로고침</button><button className="btn btn-primary" onClick={() => void runLiveCheck()} disabled={loading}>실시간 연결 확인</button></>} />
     {error && <div className="alert alert-error">{error}</div>}
     <div className="dashboard-grid">
       <section className="card"><div className="card-header"><span className="card-title">서버 상태</span><Settings size={18} color="var(--accent-blue)" /></div><div className="metric-row"><span>API</span><StatusBadge label={health?.status ?? '확인 중'} tone={health?.status === 'ok' ? 'success' : 'neutral'} /></div><div className="metric-row"><span>Paper worker</span><StatusBadge label={health?.paper_worker ?? '-'} tone={health?.paper_worker === 'running' ? 'success' : 'neutral'} /></div></section>
-      <section className="card"><div className="card-header"><span className="card-title">데이터·브로커 연결</span></div>{Object.entries(diagnostics?.sources ?? {}).map(([name, state]) => <div className="metric-row" key={name}><span>{name}</span><strong>{String(state)}</strong></div>)}<div className="metric-row"><span>실거래</span><strong>{diagnostics?.live_trading ?? '-'}</strong></div><div className="metric-row"><span>코인 매매</span><strong>{diagnostics?.crypto_trading ?? '-'}</strong></div></section>
-      <section className="card"><div className="card-header"><span className="card-title">실시간 조회 결과</span></div>{live ? Object.entries(live).map(([name, value]) => <div className="metric-row" key={name}><span>{name}</span><strong>{value.status}</strong></div>) : <p style={{ color: 'var(--text-tertiary)' }}>버튼을 눌러 읽기 전용 연결을 확인하세요.</p>}</section>
+      <section className="card"><div className="card-header"><span className="card-title">데이터·브로커 연결</span></div>{sourceEntries.length > 0 ? sourceEntries.map(([name, state]) => <div className="metric-row" key={name}><span>{name}</span><StatusBadge label={String(state)} tone={String(state).includes('configured') ? 'success' : 'warning'} /></div>) : <p className="muted-copy">진단 정보가 아직 없습니다.</p>}<div className="metric-row"><span>실거래</span><StatusBadge label={diagnostics?.live_trading ?? '-'} tone="neutral" /></div><div className="metric-row"><span>코인 매매</span><StatusBadge label={diagnostics?.crypto_trading ?? '-'} tone="neutral" /></div></section>
+      <section className="card"><div className="card-header"><span className="card-title">실시간 조회 결과</span></div>{liveEntries.length > 0 ? liveEntries.map(([name, value]) => <div className="metric-row" key={name}><span>{name}</span><StatusBadge label={value.status} tone={value.status === 'ok' ? 'success' : 'danger'} /></div>) : <p className="muted-copy">버튼을 눌러 읽기 전용 연결을 확인하세요.</p>}</section>
     </div>
   </div>;
 }

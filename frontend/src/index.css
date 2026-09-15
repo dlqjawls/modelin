@@ -637,6 +637,7 @@ a:hover {
 .condition-remove { color: var(--text-tertiary); }
 .condition-actions { display: flex; justify-content: space-between; align-items: center; margin-top: var(--space-md); gap: var(--space-md); }
 .alert-dismiss { margin-left: auto; color: var(--color-loss); }
+.muted-copy { color: var(--text-tertiary); font-size: 0.85rem; }
 .section-gap { margin-bottom: var(--space-md); }
 .inner-gap { margin-top: var(--space-sm); }
 .command-group { margin-top: var(--space-md); gap: var(--space-sm); }
