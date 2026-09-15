@@ -3,7 +3,7 @@
  */
 import { Search, Bell } from 'lucide-react';
 import { useI18n } from '../hooks/useI18n';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 function isKrxOpen(date: Date): boolean {
   const parts = new Intl.DateTimeFormat('en-US', {
@@ -17,6 +17,18 @@ function isKrxOpen(date: Date): boolean {
 export default function HeaderBar() {
   const { t } = useI18n();
   const [searchQuery, setSearchQuery] = useState('');
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const handleShortcut = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+        event.preventDefault();
+        searchInputRef.current?.focus();
+      }
+    };
+    window.addEventListener('keydown', handleShortcut);
+    return () => window.removeEventListener('keydown', handleShortcut);
+  }, []);
 
   const isMarketOpen = isKrxOpen(new Date());
 
@@ -25,7 +37,9 @@ export default function HeaderBar() {
       <div className="header-search">
         <Search size={16} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
         <input
+          ref={searchInputRef}
           type="text"
+          aria-label={t('common.search')}
           placeholder={t('common.search')}
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
