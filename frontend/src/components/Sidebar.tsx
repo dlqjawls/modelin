@@ -29,8 +29,8 @@ export default function Sidebar({ activePage, onNavigate }: SidebarProps) {
   ];
 
   const executionNav = [
-    { id: 'portfolio', icon: PieChart, label: t('nav.portfolio'), badge: t('common.comingSoon') },
-    { id: 'trading', icon: Bot, label: t('nav.trading'), badge: t('common.comingSoon') },
+    { id: 'portfolio', icon: PieChart, label: t('nav.portfolio') },
+    { id: 'trading', icon: Bot, label: t('nav.trading') },
   ];
 
   return (
@@ -69,7 +69,6 @@ export default function Sidebar({ activePage, onNavigate }: SidebarProps) {
           >
             <item.icon className="nav-item-icon" />
             <span>{item.label}</span>
-            {item.badge && <span className="nav-item-badge">{item.badge}</span>}
           </button>
         ))}
 
