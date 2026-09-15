@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { BarChart3, Loader2 } from 'lucide-react';
 import { portfolioApi, type PortfolioOptimizationResult } from '../services/research';
+import { PageHeader, StatusBadge } from './ui';
 
 const methods = [['equal_weight', '동일 가중'], ['inverse_volatility', '변동성 역가중'], ['min_volatility', '최소 변동성']];
 const dateInputValue = (date: Date) => date.toISOString().slice(0, 10);
@@ -30,6 +31,7 @@ export default function PortfolioPanel() {
   };
 
   return <div className="page-content animate-fadeIn">
+    <PageHeader title="포트폴리오 최적화" description="선택한 자산의 위험과 기대수익을 기준으로 비중을 계산합니다." actions={<StatusBadge label="분석 전용" tone="info" />} />
     <div className="card" style={{ marginBottom: 'var(--space-md)' }}>
       <div className="card-header"><span className="card-title">포트폴리오 최적화</span><BarChart3 size={20} color="var(--accent-blue)" /></div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 'var(--space-md)' }}>

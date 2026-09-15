@@ -11,6 +11,7 @@ import {
   type ScreenerCondition,
   type ScreenerResultItem,
 } from '../services/research';
+import { PageHeader, StatusBadge } from './ui';
 
 interface UIExtendedCondition {
   id: number;
@@ -174,6 +175,7 @@ export default function ScreenerPanel() {
 
   return (
     <div className="page-content animate-fadeIn">
+      <PageHeader title={t('screen.title')} description="조건을 조합해 투자 후보군을 선별합니다." actions={<StatusBadge label="시장 데이터 기반" tone="info" />} />
       {/* Condition Builder Card */}
       <div className="card" style={{ marginBottom: 'var(--space-md)' }}>
         <div className="card-header">

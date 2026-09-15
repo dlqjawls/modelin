@@ -25,6 +25,7 @@ import {
   type BacktestResult,
   type StrategyScore,
 } from '../services/research';
+import { PageHeader, StatusBadge } from './ui';
 
 const STRATEGIES = [
   { value: 'equal_weight', label: '동일 가중 (Buy & Hold)' },
@@ -186,6 +187,7 @@ export default function BacktestPanel() {
 
   return (
     <div className="page-content animate-fadeIn">
+      <PageHeader title={t('bt.title')} description="과거 데이터를 사용해 전략의 위험과 성과를 검증합니다." actions={<StatusBadge label="검증 전용" tone="info" />} />
       {/* Config Card */}
       <div className="card" style={{ marginBottom: 'var(--space-md)' }}>
         <div className="card-header">

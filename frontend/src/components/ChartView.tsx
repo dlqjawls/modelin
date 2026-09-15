@@ -16,6 +16,7 @@ import {
 import { RefreshCw, Search, AlertCircle } from 'lucide-react';
 import { useI18n } from '../hooks/useI18n';
 import { marketApi, type OHLCVItem } from '../services/research';
+import { PageHeader, StatusBadge } from './ui';
 
 function formatDate(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -283,6 +284,7 @@ export default function ChartView() {
 
   return (
     <div className="page-content animate-fadeIn">
+      <PageHeader title="차트 분석" description="종목별 가격·거래량과 이동평균을 확인합니다." actions={<StatusBadge label="실시간 조회" tone={error ? 'warning' : 'info'} />} />
       {/* Controls Bar */}
       <div className="card" style={{ marginBottom: 'var(--space-md)' }}>
         <div
