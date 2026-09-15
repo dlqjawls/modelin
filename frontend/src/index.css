@@ -629,6 +629,22 @@ a:hover {
   border-radius: var(--radius-lg);
 }
 
+.error-boundary {
+  min-height: 220px;
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: var(--space-sm);
+  padding: var(--space-xl);
+  text-align: center;
+  background: var(--color-loss-bg);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: var(--radius-lg);
+}
+
+.error-boundary h2 { color: var(--text-primary); font-size: 1.1rem; }
+.error-boundary p { color: var(--text-secondary); font-size: 0.85rem; }
+
 /* === Operations panels === */
 .dashboard-grid {
   display: grid;
