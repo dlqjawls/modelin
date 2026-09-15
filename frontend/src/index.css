@@ -986,8 +986,6 @@ a:hover {
   .card { padding: var(--space-md); }
   .table-container { overflow-x: auto; }
 }
-.badge-danger { background: var(--color-loss-bg); color: var(--color-loss); }
-
 /* === Chart Container === */
 .chart-container {
   width: 100%;
@@ -1048,7 +1046,6 @@ a:hover {
   color: var(--text-tertiary);
   max-width: 300px;
 }
-
 /* === Animations === */
 @keyframes spin {
   to { transform: rotate(360deg); }
@@ -1075,43 +1072,4 @@ a:hover {
 
 .animate-slideIn {
   animation: slideInRight 0.3s ease-out;
-}
-
-/* === Responsive === */
-@media (max-width: 1024px) {
-  .sidebar {
-    width: var(--sidebar-collapsed);
-    min-width: var(--sidebar-collapsed);
-  }
-
-  .sidebar-brand,
-  .nav-item span,
-  .nav-section-label,
-  .nav-item-badge {
-    display: none;
-  }
-
-  .nav-item {
-    justify-content: center;
-    padding: var(--space-md);
-  }
-
-  .content-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .content-grid .card.wide {
-    grid-column: span 1;
-  }
-}
-
-@media (max-width: 768px) {
-  .dashboard-grid { grid-template-columns: 1fr; }
-  .stats-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-
-  .header-search {
-    min-width: 200px;
-  }
 }
