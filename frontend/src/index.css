@@ -616,6 +616,15 @@ a:hover {
 .form-error { color: var(--color-loss); margin-top: var(--space-sm); }
 .allocation-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: var(--space-sm); }
 .portfolio-metrics { display: flex; flex-wrap: wrap; gap: var(--space-lg); margin-top: var(--space-lg); color: var(--text-secondary); }
+.analysis-config-card, .analysis-section-card { margin-bottom: var(--space-md); }
+.card-heading-group { display: flex; align-items: center; gap: 10px; }
+.card-subtitle { color: var(--text-tertiary); font-size: 0.78rem; }
+.toolbar-actions { display: flex; align-items: center; gap: var(--space-sm); flex-wrap: wrap; }
+.analysis-form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: var(--space-md); }
+.form-actions-end { justify-content: flex-end; align-self: flex-end; }
+.btn-action { min-width: 120px; }
+.alert-card { display: flex; align-items: center; gap: 10px; margin-bottom: var(--space-md); padding: var(--space-md); border-radius: var(--radius-lg); }
+.alert-card-error { background: var(--color-loss-bg); border: 1px solid rgba(239, 68, 68, 0.3); color: var(--color-loss); }
 
 .page-header-actions {
   display: flex;

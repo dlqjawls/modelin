@@ -189,16 +189,16 @@ export default function BacktestPanel() {
     <div className="page-content animate-fadeIn">
       <PageHeader title={t('bt.title')} description="과거 데이터를 사용해 전략의 위험과 성과를 검증합니다." actions={<StatusBadge label="검증 전용" tone="info" />} />
       {/* Config Card */}
-      <div className="card" style={{ marginBottom: 'var(--space-md)' }}>
+      <div className="card analysis-config-card">
         <div className="card-header">
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div className="card-heading-group">
             <span className="card-title">{t('bt.title')}</span>
-            <span style={{ fontSize: '0.78rem', color: 'var(--text-tertiary)' }}>
+            <span className="card-subtitle">
               (벡터화 백테스팅 엔진 연동)
             </span>
           </div>
 
-          <div style={{ display: 'flex', gap: 8 }}>
+          <div className="toolbar-actions">
             <select
               className="select-field"
               value={market}
@@ -211,13 +211,7 @@ export default function BacktestPanel() {
           </div>
         </div>
 
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
-            gap: 'var(--space-md)',
-          }}
-        >
+        <div className="analysis-form-grid">
           <div className="input-group">
             <label className="input-label">{t('bt.strategy')}</label>
             <select
@@ -273,12 +267,12 @@ export default function BacktestPanel() {
             />
           </div>
 
-          <div className="input-group" style={{ justifyContent: 'flex-end', alignSelf: 'flex-end' }}>
-            <div style={{ display: 'flex', gap: 8 }}>
+          <div className="input-group form-actions-end">
+            <div className="toolbar-actions">
               <button className="btn btn-secondary" onClick={resetForm} disabled={loading}>
                 <RotateCcw size={14} /> 초기화
               </button>
-              <button className="btn btn-primary" onClick={runBacktest} disabled={loading} style={{ minWidth: 120 }}>
+              <button className="btn btn-primary btn-action" onClick={runBacktest} disabled={loading}>
                 {loading ? (
                   <>
                     <RefreshCw size={14} className="animate-spin" />
@@ -300,26 +294,15 @@ export default function BacktestPanel() {
 
       {/* Error Alert */}
       {error && (
-        <div
-          className="card"
-          style={{
-            marginBottom: 'var(--space-md)',
-            background: 'rgba(239, 68, 68, 0.1)',
-            borderColor: 'rgba(239, 68, 68, 0.3)',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 10,
-            color: '#f87171',
-          }}
-        >
+        <div className="alert-card alert-card-error">
           <AlertCircle size={18} />
-          <span style={{ fontSize: '0.85rem' }}>{error}</span>
+          <span>{error}</span>
         </div>
       )}
 
       {comparison.length > 0 && (
-        <div className="card" style={{ marginBottom: 'var(--space-md)' }}>
-          <div className="card-header"><span className="card-title">검증 구간 전략 순위</span><span style={{ color: 'var(--text-tertiary)', fontSize: '0.8rem' }}>최고 전략을 자동 적용하지 않음</span></div>
+        <div className="card analysis-section-card">
+          <div className="card-header"><span className="card-title">검증 구간 전략 순위</span><span className="card-subtitle">최고 전략을 자동 적용하지 않음</span></div>
           <div style={{ overflowX: 'auto' }}><table className="data-table"><thead><tr><th>순위</th><th>전략</th><th>CAGR</th><th>샤프</th><th>최대낙폭</th><th>거래 수</th></tr></thead><tbody>{comparison.map((item, index) => <tr key={`${JSON.stringify(item.strategy)}-${index}`}><td>{index + 1}</td><td>{String(item.strategy.type || 'unknown')}</td><td>{(item.cagr * 100).toFixed(2)}%</td><td>{item.sharpe_ratio.toFixed(2)}</td><td>{(item.max_drawdown * 100).toFixed(2)}%</td><td>{item.total_trades}</td></tr>)}</tbody></table></div>
         </div>
       )}
