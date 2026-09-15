@@ -26,6 +26,7 @@ import {
 } from 'recharts';
 import { marketApi, type AssetInfo } from '../services/research';
 import { operationsApi } from '../services/operations';
+import { PageHeader, StatusBadge } from './ui';
 
 interface WatchlistItem extends AssetInfo {
   price: number;
@@ -153,22 +154,10 @@ export default function Dashboard() {
 
   return (
     <div className="page-content animate-fadeIn">
+      <PageHeader title="대시보드" description="KIS 계좌와 시장 데이터의 현재 상태를 한눈에 확인합니다." actions={<StatusBadge label="KIS · 읽기 전용" tone={kisTotalAssets === null ? 'warning' : 'success'} />} />
       {/* Error Banner */}
       {error && (
-        <div
-          style={{
-            padding: 'var(--space-md)',
-            background: 'var(--color-warning-bg)',
-            border: '1px solid rgba(245, 158, 11, 0.3)',
-            borderRadius: 'var(--radius-md)',
-            color: 'var(--color-warning)',
-            fontSize: '0.85rem',
-            marginBottom: 'var(--space-md)',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-          }}
-        >
+        <div className="alert alert-warning">
           <span>⚠️ {error}</span>
           <button className="btn btn-sm btn-ghost" onClick={loadData}>
             <RefreshCw size={14} /> 재시도
@@ -181,7 +170,7 @@ export default function Dashboard() {
         <div className="stat-card blue">
           <div className="stat-icon blue"><Wallet size={20} /></div>
           <div className="stat-label">{t('dash.totalAssets')}</div>
-          <div className="stat-value" style={{ color: 'var(--text-primary)' }}>
+          <div className="stat-value">
             {loading ? '...' : kisTotalAssets === null ? '-' : `₩${totalAssets.toLocaleString()}`}
           </div>
         </div>
@@ -189,9 +178,7 @@ export default function Dashboard() {
         <div className="stat-card green">
           <div className="stat-icon green"><TrendingUp size={20} /></div>
           <div className="stat-label">{t('dash.todayReturn')}</div>
-          <div className="stat-value" style={{
-            color: avgChange >= 0 ? 'var(--color-profit)' : 'var(--color-loss)'
-          }}>
+          <div className={`stat-value ${avgChange >= 0 ? 'value-positive' : 'value-negative'}`}>
             {loading ? '...' : `${avgChange >= 0 ? '+' : ''}${avgChange.toFixed(2)}%`}
           </div>
         </div>
@@ -199,7 +186,7 @@ export default function Dashboard() {
         <div className="stat-card purple">
           <div className="stat-icon purple"><BarChart3 size={20} /></div>
           <div className="stat-label">{t('dash.totalReturn')}</div>
-          <div className="stat-value" style={{ color: 'var(--accent-purple)' }}>
+          <div className="stat-value value-accent">
             {loading ? '...' : (equityData.length > 1
               ? `${((equityData[equityData.length - 1].value / equityData[0].value - 1) * 100).toFixed(1)}%`
               : '-')}
@@ -209,15 +196,15 @@ export default function Dashboard() {
         <div className="stat-card cyan">
           <div className="stat-icon cyan"><Zap size={20} /></div>
           <div className="stat-label">{t('dash.activeTrades')}</div>
-          <div className="stat-value" style={{ color: 'var(--accent-cyan)' }}>0</div>
-          <div style={{ marginTop: 4 }}>
+          <div className="stat-value value-cyan">0</div>
+          <div className="stat-meta">
             <span className="badge badge-info">Paper Trading</span>
           </div>
         </div>
       </div>
 
       {/* Main Content Grid */}
-      <div className="content-grid" style={{ marginTop: 'var(--space-md)' }}>
+      <div className="content-grid">
         {/* Equity Curve */}
         <div className="card wide">
           <div className="card-header">
@@ -226,7 +213,7 @@ export default function Dashboard() {
               <RefreshCw size={14} />
             </button>
           </div>
-          <div style={{ height: 300, position: 'relative' }}>
+          <div className="chart-frame">
             {loading && (
               <div className="loading-overlay">
                 <div className="loading-spinner" />
@@ -266,7 +253,7 @@ export default function Dashboard() {
               <RefreshCw size={14} />
             </button>
           </div>
-          <div style={{ overflowY: 'auto', maxHeight: 340, position: 'relative' }}>
+          <div className="watchlist-scroll">
             {loading && (
               <div className="loading-overlay">
                 <div className="loading-spinner" />
@@ -275,37 +262,29 @@ export default function Dashboard() {
             {watchlist.length > 0 ? watchlist.map((item) => (
               <div
                 key={`${item.market}-${item.symbol}`}
-                style={{
-                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                  padding: '10px 0', borderBottom: '1px solid var(--border-subtle)',
-                  cursor: 'pointer', transition: 'background 150ms',
-                }}
+                className="watchlist-row"
               >
                 <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>{item.symbol}</span>
+                  <div className="watchlist-symbol">
+                    <span>{item.symbol}</span>
                     <span className="badge badge-info">{item.market.toUpperCase()}</span>
                   </div>
-                  <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', marginTop: 2 }}>
+                  <div className="watchlist-name">
                     {item.name}
                   </div>
                 </div>
-                <div style={{ textAlign: 'right' }}>
-                  <div style={{ fontFamily: 'var(--font-mono)', fontWeight: 600, fontSize: '0.9rem' }}>
+                <div className="watchlist-quote">
+                  <div className="watchlist-price">
                     {formatPrice(item.price, item.currency)}
                   </div>
-                  <div style={{
-                    fontSize: '0.75rem', fontWeight: 600,
-                    color: item.change >= 0 ? 'var(--color-profit)' : 'var(--color-loss)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 2,
-                  }}>
+                  <div className={`watchlist-change ${item.change >= 0 ? 'value-positive' : 'value-negative'}`}>
                     {item.change >= 0 ? <ArrowUpRight size={12} /> : <ArrowDownRight size={12} />}
                     {item.change >= 0 ? '+' : ''}{item.change}%
                   </div>
                 </div>
               </div>
             )) : !loading ? (
-              <div className="empty-state" style={{ padding: 'var(--space-lg)' }}>
+              <div className="empty-state compact">
                 <p>서버 연결 후 관심종목이 표시됩니다.</p>
               </div>
             ) : null}
@@ -317,9 +296,9 @@ export default function Dashboard() {
           <div className="card-header">
             <span className="card-title">{t('dash.recentActivity')}</span>
           </div>
-          <div className="empty-state" style={{ padding: 'var(--space-lg)' }}>
-            <Activity size={32} style={{ color: 'var(--text-muted)', opacity: 0.4 }} />
-            <p style={{ marginTop: 8, color: 'var(--text-tertiary)', fontSize: '0.8rem' }}>
+          <div className="empty-state compact">
+            <Activity size={32} className="empty-state-muted" />
+            <p>
               스크리닝, 백테스팅 실행 시 활동 기록이 여기에 표시됩니다.
             </p>
           </div>

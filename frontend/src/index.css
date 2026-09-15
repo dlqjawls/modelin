@@ -562,6 +562,37 @@ a:hover {
   grid-column: span 2;
 }
 
+.alert-warning {
+  padding: var(--space-md);
+  background: var(--color-warning-bg);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  border-radius: var(--radius-md);
+  color: var(--color-warning);
+  font-size: 0.85rem;
+  margin-bottom: var(--space-md);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-md);
+}
+
+.value-positive { color: var(--color-profit); }
+.value-negative { color: var(--color-loss); }
+.value-accent { color: var(--accent-purple); }
+.value-cyan { color: var(--accent-cyan); }
+.stat-meta { margin-top: var(--space-xs); }
+.chart-frame { height: 300px; position: relative; }
+.watchlist-scroll { overflow-y: auto; max-height: 340px; position: relative; }
+.watchlist-row { display: flex; justify-content: space-between; align-items: center; gap: var(--space-md); padding: 10px 0; border-bottom: 1px solid var(--border-subtle); cursor: pointer; transition: background var(--transition-fast); }
+.watchlist-row:hover { background: rgba(255, 255, 255, 0.03); }
+.watchlist-symbol { display: flex; align-items: center; gap: var(--space-sm); font-weight: 600; font-size: 0.9rem; }
+.watchlist-name { font-size: 0.75rem; color: var(--text-tertiary); margin-top: 2px; }
+.watchlist-quote { text-align: right; }
+.watchlist-price { font-family: var(--font-mono); font-weight: 600; font-size: 0.9rem; }
+.watchlist-change { font-size: 0.75rem; font-weight: 600; display: flex; align-items: center; justify-content: flex-end; gap: 2px; }
+.empty-state.compact { padding: var(--space-lg); }
+.empty-state-muted { color: var(--text-muted); opacity: 0.4; }
+
 .page-header-actions {
   display: flex;
   align-items: center;
