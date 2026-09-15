@@ -637,6 +637,23 @@ a:hover {
 .condition-remove { color: var(--text-tertiary); }
 .condition-actions { display: flex; justify-content: space-between; align-items: center; margin-top: var(--space-md); gap: var(--space-md); }
 .alert-dismiss { margin-left: auto; color: var(--color-loss); }
+.chart-controls-card { margin-bottom: var(--space-md); }
+.chart-controls { display: flex; align-items: center; gap: var(--space-md); flex-wrap: wrap; }
+.inline-input-group { display: flex; align-items: center; gap: var(--space-sm); }
+.inline-label { white-space: nowrap; }
+.chart-search-form { display: flex; align-items: center; gap: 6px; }
+.chart-symbol-input { width: 130px; }
+.chart-quick-buttons, .chart-intervals { display: flex; align-items: center; gap: 6px; }
+.chart-intervals { margin-left: auto; gap: 4px; }
+.chart-quick-button { font-size: 0.75rem; padding: 3px 8px; }
+.chart-card { padding: 0; overflow: hidden; position: relative; }
+.chart-canvas { width: 100%; height: 480px; }
+@media (max-width: 700px) {
+  .chart-controls { align-items: stretch; flex-direction: column; }
+  .inline-input-group, .chart-search-form { width: 100%; }
+  .chart-symbol-input { flex: 1; width: auto; }
+  .chart-intervals { margin-left: 0; }
+}
 @media (max-width: 600px) {
   .condition-row > .condition-factor, .condition-row > .condition-value { width: 100%; }
   .condition-row > .condition-operator { flex: 1; }

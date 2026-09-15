@@ -286,18 +286,11 @@ export default function ChartView() {
     <div className="page-content animate-fadeIn">
       <PageHeader title="차트 분석" description="종목별 가격·거래량과 이동평균을 확인합니다." actions={<StatusBadge label="실시간 조회" tone={error ? 'warning' : 'info'} />} />
       {/* Controls Bar */}
-      <div className="card" style={{ marginBottom: 'var(--space-md)' }}>
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 'var(--space-md)',
-            flexWrap: 'wrap',
-          }}
-        >
+      <div className="card chart-controls-card">
+        <div className="chart-controls">
           {/* Market Selector */}
-          <div className="input-group" style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <label className="input-label" style={{ whiteSpace: 'nowrap' }}>
+          <div className="inline-input-group">
+            <label className="input-label inline-label">
               {t('common.market')}
             </label>
             <select
@@ -312,17 +305,16 @@ export default function ChartView() {
           </div>
 
           {/* Symbol Input */}
-          <form onSubmit={handleSearchSubmit} style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-            <div className="input-group" style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-              <label className="input-label" style={{ whiteSpace: 'nowrap' }}>
+          <form onSubmit={handleSearchSubmit} className="chart-search-form">
+            <div className="inline-input-group">
+              <label className="input-label inline-label">
                 {t('chart.symbol')}
               </label>
               <input
-                className="input-field"
                 value={inputSymbol}
                 onChange={(e) => setInputSymbol(e.target.value)}
                 placeholder="005930, AAPL..."
-                style={{ width: 130 }}
+                className="input-field chart-symbol-input"
               />
             </div>
             <button type="submit" className="btn btn-sm btn-ghost" title="조회">
@@ -331,16 +323,15 @@ export default function ChartView() {
           </form>
 
           {/* Quick Select Buttons */}
-          <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+          <div className="chart-quick-buttons">
             {quickSymbols.map((q) => (
               <button
                 key={q.symbol}
-                className={`btn btn-sm ${symbol === q.symbol ? 'btn-primary' : 'btn-ghost'}`}
+                className={`btn btn-sm ${symbol === q.symbol ? 'btn-primary' : 'btn-ghost'} chart-quick-button`}
                 onClick={() => {
                   setSymbol(q.symbol);
                   setInputSymbol(q.symbol);
                 }}
-                style={{ fontSize: '0.75rem', padding: '3px 8px' }}
               >
                 {q.name}
               </button>
@@ -348,7 +339,7 @@ export default function ChartView() {
           </div>
 
           {/* Interval Buttons */}
-          <div style={{ display: 'flex', gap: 4, marginLeft: 'auto' }}>
+          <div className="chart-intervals">
             {['1d', '1w', '1M'].map((int) => (
               <button
                 key={int}
@@ -372,23 +363,11 @@ export default function ChartView() {
 
       {/* Error Alert */}
       {error && (
-        <div
-          className="card"
-          style={{
-            marginBottom: 'var(--space-md)',
-            background: 'rgba(239, 68, 68, 0.1)',
-            borderColor: 'rgba(239, 68, 68, 0.3)',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 10,
-            color: '#f87171',
-          }}
-        >
+        <div className="alert-card alert-card-error">
           <AlertCircle size={18} />
-          <span style={{ fontSize: '0.85rem' }}>{error}</span>
+          <span>{error}</span>
           <button
-            className="btn btn-sm btn-ghost"
-            style={{ marginLeft: 'auto', color: '#f87171' }}
+            className="btn btn-sm btn-ghost alert-dismiss"
             onClick={fetchChartData}
           >
             다시 시도
@@ -397,7 +376,7 @@ export default function ChartView() {
       )}
 
       {/* Chart Canvas */}
-      <div className="card" style={{ padding: 0, overflow: 'hidden', position: 'relative' }}>
+      <div className="card chart-card">
         {loading && (
           <div
             style={{
@@ -417,7 +396,7 @@ export default function ChartView() {
             </div>
           </div>
         )}
-        <div ref={chartContainerRef} style={{ width: '100%', height: 480 }} />
+        <div ref={chartContainerRef} className="chart-canvas" />
       </div>
 
       {/* Live Stat Bar */}
