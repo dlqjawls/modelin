@@ -177,16 +177,16 @@ export default function ScreenerPanel() {
     <div className="page-content animate-fadeIn">
       <PageHeader title={t('screen.title')} description="조건을 조합해 투자 후보군을 선별합니다." actions={<StatusBadge label="시장 데이터 기반" tone="info" />} />
       {/* Condition Builder Card */}
-      <div className="card" style={{ marginBottom: 'var(--space-md)' }}>
+      <div className="card analysis-config-card">
         <div className="card-header">
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div className="card-heading-group">
             <span className="card-title">{t('screen.title')}</span>
-            <span style={{ fontSize: '0.78rem', color: 'var(--text-tertiary)' }}>
+            <span className="card-subtitle">
               (실시간 팩터 기반 스크리너)
             </span>
           </div>
 
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <div className="toolbar-actions">
             <select
               className="select-field"
               value={market}
@@ -200,25 +200,16 @@ export default function ScreenerPanel() {
         </div>
 
         {/* Preset Strategies */}
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8,
-            marginBottom: 'var(--space-md)',
-            flexWrap: 'wrap',
-          }}
-        >
-          <span style={{ fontSize: '0.8rem', color: 'var(--text-tertiary)', display: 'flex', alignItems: 'center', gap: 4 }}>
-            <Sparkles size={13} style={{ color: 'var(--accent-cyan)' }} />
+        <div className="preset-toolbar">
+          <span className="preset-label">
+            <Sparkles size={13} />
             추천 프리셋:
           </span>
           {PRESETS.map((p) => (
             <button
               key={p.name}
-              className="btn btn-sm btn-ghost"
               onClick={() => applyPreset(p.conditions)}
-              style={{ fontSize: '0.75rem', padding: '3px 10px', borderRadius: 20 }}
+              className="btn btn-sm btn-ghost preset-button"
             >
               {p.name}
             </button>
@@ -226,26 +217,16 @@ export default function ScreenerPanel() {
         </div>
 
         {/* Condition Rows */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <div className="condition-list">
           {conditions.map((cond) => (
             <div
               key={cond.id}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 10,
-                padding: '8px 12px',
-                background: 'var(--bg-tertiary)',
-                borderRadius: 'var(--radius-md)',
-                border: '1px solid var(--border-subtle)',
-                flexWrap: 'wrap',
-              }}
+              className="condition-row"
             >
               <select
-                className="select-field"
                 value={cond.factor}
                 onChange={(e) => updateCondition(cond.id, 'factor', e.target.value)}
-                style={{ width: 190 }}
+                className="select-field condition-factor"
               >
                 {FACTORS.map((f) => (
                   <option key={f.value} value={f.value}>
@@ -255,10 +236,9 @@ export default function ScreenerPanel() {
               </select>
 
               <select
-                className="select-field"
                 value={cond.operator}
                 onChange={(e) => updateCondition(cond.id, 'operator', e.target.value)}
-                style={{ width: 70 }}
+                className="select-field condition-operator"
               >
                 {OPERATORS.map((op) => (
                   <option key={op} value={op}>
@@ -268,21 +248,19 @@ export default function ScreenerPanel() {
               </select>
 
               <input
-                className="input-field"
                 type="number"
                 step="any"
                 value={cond.value}
                 onChange={(e) => updateCondition(cond.id, 'value', e.target.value)}
                 placeholder="값 입력 (예: 15)"
-                style={{ width: 140 }}
+                className="input-field condition-value"
               />
 
               <button
-                className="btn btn-sm btn-ghost"
                 onClick={() => removeCondition(cond.id)}
                 disabled={conditions.length <= 1}
                 title="조건 삭제"
-                style={{ color: 'var(--text-tertiary)' }}
+                className="btn btn-sm btn-ghost condition-remove"
               >
                 <X size={16} />
               </button>
@@ -291,25 +269,17 @@ export default function ScreenerPanel() {
         </div>
 
         {/* Action Buttons */}
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            marginTop: 'var(--space-md)',
-          }}
-        >
+        <div className="condition-actions">
           <button className="btn btn-secondary btn-sm" onClick={addCondition}>
             <Plus size={14} />
             {t('screen.addCondition')}
           </button>
 
-          <div style={{ display: 'flex', gap: 8 }}>
+          <div className="toolbar-actions">
             <button
-              className="btn btn-primary"
               onClick={runScreening}
               disabled={loading}
-              style={{ minWidth: 120 }}
+              className="btn btn-primary btn-action"
             >
               {loading ? (
                 <>
@@ -329,23 +299,11 @@ export default function ScreenerPanel() {
 
       {/* Error Message */}
       {error && (
-        <div
-          className="card"
-          style={{
-            marginBottom: 'var(--space-md)',
-            background: 'rgba(239, 68, 68, 0.1)',
-            borderColor: 'rgba(239, 68, 68, 0.3)',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 10,
-            color: '#f87171',
-          }}
-        >
+        <div className="alert-card alert-card-error">
           <AlertCircle size={18} />
-          <span style={{ fontSize: '0.85rem' }}>{error}</span>
+          <span>{error}</span>
           <button
-            className="btn btn-sm btn-ghost"
-            style={{ marginLeft: 'auto', color: '#f87171' }}
+            className="btn btn-sm btn-ghost alert-dismiss"
             onClick={runScreening}
           >
             다시 시도
