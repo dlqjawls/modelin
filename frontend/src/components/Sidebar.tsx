@@ -51,6 +51,7 @@ export default function Sidebar({ activePage, onNavigate }: SidebarProps) {
             className={`nav-item ${activePage === item.id ? 'active' : ''}`}
             onClick={() => onNavigate(item.id)}
             aria-current={activePage === item.id ? 'page' : undefined}
+            aria-label={item.label}
           >
             <item.icon className="nav-item-icon" />
             <span>{item.label}</span>
@@ -66,6 +67,7 @@ export default function Sidebar({ activePage, onNavigate }: SidebarProps) {
             className={`nav-item ${activePage === item.id ? 'active' : ''}`}
             onClick={() => onNavigate(item.id)}
             aria-current={activePage === item.id ? 'page' : undefined}
+            aria-label={item.label}
           >
             <item.icon className="nav-item-icon" />
             <span>{item.label}</span>
@@ -77,6 +79,7 @@ export default function Sidebar({ activePage, onNavigate }: SidebarProps) {
         <button
           className="nav-item"
           onClick={() => setLang(lang === 'ko' ? 'en' : 'ko')}
+          aria-label={lang === 'ko' ? 'English' : '한국어'}
         >
           <Globe className="nav-item-icon" />
           <span>{lang === 'ko' ? 'English' : '한국어'}</span>
@@ -86,6 +89,7 @@ export default function Sidebar({ activePage, onNavigate }: SidebarProps) {
           className={`nav-item ${activePage === 'settings' ? 'active' : ''}`}
           onClick={() => onNavigate('settings')}
           aria-current={activePage === 'settings' ? 'page' : undefined}
+          aria-label={t('nav.settings')}
         >
           <Settings className="nav-item-icon" />
           <span>{t('nav.settings')}</span>
