@@ -4,6 +4,7 @@ import { Activity, RefreshCw } from 'lucide-react';
 import { getApiErrorMessage } from '../services/errors';
 import { operationsApi } from '../services/operations';
 import type { DiagnosticsResponse, LiveDiagnosticsResponse, PaperAccount, AccountSnapshotResponse, Deployment } from '../contracts/operations';
+import { PageHeader, StatusBadge } from './ui';
 
 export default function TradingPanel() {
   const [accounts, setAccounts] = useState<PaperAccount[]>([]);
@@ -78,9 +79,7 @@ export default function TradingPanel() {
   }, [selected]);
 
   return <div className="page-content">
-    <div className="page-header"><div><h2>자동매매 운영</h2><p>현재는 안전한 Paper 모드만 지원합니다.</p></div>
-      <span className={`badge ${workerState === 'running' ? 'badge-success' : workerState === 'degraded' ? 'badge-danger' : 'badge-info'}`}>WORKER · {workerState.toUpperCase()}</span>
-      <button className="btn btn-secondary" onClick={() => void refresh()}><RefreshCw size={16} /> 새로고침</button></div>
+    <PageHeader title="자동매매 운영" description="현재는 안전한 Paper 모드만 지원합니다." actions={<><StatusBadge label={`WORKER · ${workerState.toUpperCase()}`} tone={workerState === 'running' ? 'success' : workerState === 'degraded' ? 'danger' : 'info'} /><button className="btn btn-secondary" onClick={() => void refresh()}><RefreshCw size={16} /> 새로고침</button></>} />
     {error && <div className="alert alert-error">{error}</div>}
     {workerDeploymentId && <div className="metric-row" style={{ marginBottom: 16 }}><span>워커 배포</span><strong>{workerDeploymentId}</strong></div>}
     {lastWorkerResult && <section className="card" style={{ marginBottom: 16 }}>

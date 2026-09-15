@@ -562,6 +562,24 @@ a:hover {
   grid-column: span 2;
 }
 
+.page-header-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-sm);
+  flex-wrap: wrap;
+}
+
+.loading-panel {
+  min-height: 180px;
+  display: grid;
+  place-items: center;
+  color: var(--text-secondary);
+  background: var(--gradient-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+}
+
 /* === Operations panels === */
 .dashboard-grid {
   display: grid;
@@ -818,6 +836,38 @@ a:hover {
 .badge-loss { background: var(--color-loss-bg); color: var(--color-loss); }
 .badge-info { background: var(--color-info-bg); color: var(--color-info); }
 .badge-warning { background: var(--color-warning-bg); color: var(--color-warning); }
+.badge-success { background: var(--color-profit-bg); color: var(--color-profit); }
+.badge-danger { background: var(--color-loss-bg); color: var(--color-loss); }
+.badge-neutral { background: rgba(100, 116, 139, 0.14); color: var(--text-secondary); }
+
+/* === Responsive workspace === */
+@media (max-width: 900px) {
+  :root { --sidebar-width: 76px; }
+  .sidebar-brand, .nav-section-label, .nav-item span, .sidebar-footer { display: none; }
+  .sidebar-header { justify-content: center; padding: var(--space-md); }
+  .sidebar-nav { padding: var(--space-sm); }
+  .nav-item { justify-content: center; padding: var(--space-md) var(--space-sm); }
+  .nav-item.active::before { left: -1px; }
+  .page-content { padding: var(--space-md); }
+  .dashboard-grid { grid-template-columns: 1fr; }
+  .content-grid { grid-template-columns: 1fr; }
+  .content-grid .card.wide { grid-column: auto; }
+}
+
+@media (max-width: 600px) {
+  body { overflow: auto; }
+  #root, .app-layout { min-height: 100vh; height: auto; }
+  .header-bar { padding: 0 var(--space-md); }
+  .header-search { min-width: 0; flex: 1; }
+  .market-indicator { display: none; }
+  .page-header { align-items: flex-start; flex-direction: column; gap: var(--space-md); }
+  .page-header-actions { width: 100%; justify-content: flex-start; }
+  .stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-sm); }
+  .stat-card { padding: var(--space-md); }
+  .stat-value { font-size: 1.15rem; }
+  .card { padding: var(--space-md); }
+  .table-container { overflow-x: auto; }
+}
 .badge-danger { background: var(--color-loss-bg); color: var(--color-loss); }
 
 /* === Chart Container === */

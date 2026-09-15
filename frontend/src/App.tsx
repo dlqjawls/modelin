@@ -7,6 +7,10 @@ import { lazy, Suspense, useState } from 'react';
 import Sidebar from './components/Sidebar';
 import HeaderBar from './components/HeaderBar';
 
+function PageFallback() {
+  return <div className="page-content"><div className="loading-panel" role="status">화면을 불러오는 중...</div></div>;
+}
+
 const Dashboard = lazy(() => import('./components/Dashboard'));
 const ScreenerPanel = lazy(() => import('./components/ScreenerPanel'));
 const BacktestPanel = lazy(() => import('./components/BacktestPanel'));
@@ -43,7 +47,7 @@ export default function App() {
       <Sidebar activePage={activePage} onNavigate={setActivePage} />
       <main className="main-content">
         <HeaderBar />
-        <Suspense fallback={<div className="page-content">화면을 불러오는 중...</div>}>
+        <Suspense fallback={<PageFallback />}>
           {renderPage()}
         </Suspense>
       </main>
