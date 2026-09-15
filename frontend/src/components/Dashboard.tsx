@@ -219,7 +219,7 @@ export default function Dashboard() {
                 <div className="loading-spinner" />
               </div>
             )}
-            {equityData.length > 0 ? (
+            {equityData.length > 1 ? (
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={equityData}>
                   <defs>
@@ -235,6 +235,12 @@ export default function Dashboard() {
                   <Area type="monotone" dataKey="value" stroke="#3b82f6" strokeWidth={2} fill="url(#equityGrad)" />
                 </AreaChart>
               </ResponsiveContainer>
+            ) : !loading && equityData.length === 1 ? (
+              <div className="snapshot-state">
+                <span className="snapshot-label">현재 자산 스냅샷</span>
+                <strong>₩{equityData[0].value.toLocaleString()}</strong>
+                <p>자산 이력이 쌓이면 기간별 곡선이 표시됩니다.</p>
+              </div>
             ) : !loading ? (
               <div className="empty-state">
                 <Activity size={48} className="empty-state-icon" />

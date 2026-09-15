@@ -610,6 +610,10 @@ a:hover {
 .watchlist-change { font-size: 0.75rem; font-weight: 600; display: flex; align-items: center; justify-content: flex-end; gap: 2px; }
 .empty-state.compact { padding: var(--space-lg); }
 .empty-state-muted { color: var(--text-muted); opacity: 0.4; }
+.snapshot-state { height: 100%; display: grid; place-items: center; align-content: center; gap: var(--space-sm); text-align: center; }
+.snapshot-label { color: var(--text-tertiary); font-size: 0.8rem; }
+.snapshot-state strong { color: var(--text-primary); font-family: var(--font-mono); font-size: 1.8rem; }
+.snapshot-state p { color: var(--text-tertiary); font-size: 0.8rem; }
 .portfolio-config-card { margin-bottom: var(--space-md); }
 .portfolio-form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: var(--space-md); }
 .portfolio-submit { margin-top: var(--space-md); }
