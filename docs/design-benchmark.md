@@ -35,5 +35,6 @@ Modelin은 분석 결과와 자동매매 운영 상태를 한 화면에서 빠�
 
 ## 참고 기준
 
-- IBM Carbon Design System Data Table: 데이터 탐색 영역에 도구 모음, 정렬, 행 확장을 배치한다.
-- IBM Carbon Design System Status Indicator: 대시보드와 데이터 표에서 텍스트 라벨과 시각 신호를 함께 사용한다.
+- [IBM Carbon Data Table](https://carbondesignsystem.com/components/data-table/usage/): 데이터 탐색 영역에 도구 모음, 정렬, 행 확장을 배치한다. Modelin 적용 위치는 `ScreenerPanel`, `BacktestPanel`의 결과 영역이다.
+- [IBM Carbon Status Indicator](https://carbondesignsystem.com/patterns/status-indicator-pattern/): 대시보드와 데이터 표에서 텍스트 라벨과 시각 신호를 함께 사용한다. Modelin 적용 위치는 `StatusBadge`와 운영·진단 화면이다.
+- [Material Design 3](https://m3.material.io/): 진행 상태와 반응형 컴포넌트의 계층을 참고한다. Modelin 적용 위치는 공통 `PageHeader`, 로딩·오류·빈 상태다.
